@@ -21,7 +21,8 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
-  + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_ };'));
+  + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_, isPast_, '
+  + 'today_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -89,6 +90,28 @@ check('the calendar itself is not a guest', !lines.join().includes('group.calend
 check('sorted, so an unchanged list produces an unchanged cell',
   lines.join('\n') === lines.slice().sort().join('\n'));
 check('no attendees gives an empty cell, not a placeholder', A([]) === '' && A(undefined) === '');
+
+console.log('\nnothing is created for an event that already happened');
+const PH = ['Status','Type','Title','Start Date','End Date'];
+const phead = mod.findHeaderRow_([PH]);
+const prow = (o) => PH.map((h) => o[h] ?? '');
+const day = (offset) => {
+  const d = new Date(Date.now() + offset * 86400000);
+  return d.toISOString().slice(0, 10);
+};
+const past = (o) => mod.isPast_(prow(o), phead.map);
+
+check('yesterday is past', past({ 'Start Date': day(-1) }));
+check('today is NOT past — it may still be ahead of the clock',
+  !past({ 'Start Date': day(0) }), mod.today_());
+check('tomorrow is not past', !past({ 'Start Date': day(1) }));
+check('a run that started last week but ends tomorrow is not past',
+  !past({ 'Start Date': day(-7), 'End Date': day(1) }));
+check('a run that ended yesterday is past',
+  past({ 'Start Date': day(-7), 'End Date': day(-1) }));
+check('no date at all is not past — "to be confirmed" is a future state',
+  !past({ 'Start Date': '' }));
+check('an unreadable date is not treated as past', !past({ 'Start Date': 'next tuesday' }));
 
 console.log('\nthe recovery column');
 const guests = [

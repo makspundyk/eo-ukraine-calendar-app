@@ -334,6 +334,13 @@ function handleRow_(sheet, values, head, i, touched) {
   if (!iso_(get_(row, head.map, 'start_date'))) return;      // dates to be confirmed
   var eventId = String(get_(row, head.map, 'calendar_event_id') || '').trim();
 
+  if (!eventId && isPast_(row, head.map)) {
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'This event has already taken place, so no calendar invitation was created.',
+      'EO Calendar', 8);
+    return;
+  }
+
   // Published, complete, dated, and no event yet: make it now and invite the organisers.
   if (!eventId) {
     var ctx = { sheet: sheet, values: values, head: head, map: head.map };
@@ -427,6 +434,13 @@ function syncNow() {
       return;
     }
 
+    // Already happened and never had an event. Leave it alone: creating one now would invite
+    // everybody to something that is over.
+    if (!eventId && isPast_(row, col)) {
+      skipped.push('Row ' + (i + 1) + ': already took place — no calendar entry created');
+      return;
+    }
+
     var title = String(get_(row, col, 'title')).trim();
     var when = times_(row, col);
 
@@ -509,6 +523,8 @@ function flushPending() {
     if (!found || !isPublished_(found, ctx.map)) return;
     if (problems_(found, ctx.map).length) return;
     if (!iso_(get_(found, ctx.map, 'start_date'))) return;
+    // Correcting a past event would notify every guest about something that is over.
+    if (isPast_(found, ctx.map)) return;
 
     var when = times_(found, ctx.map);
     try {
@@ -646,6 +662,7 @@ function flushInvites() {
     // Unticked during the five minutes, or already done: do nothing. This is the guard.
     if (!checked_(get_(found, ctx.map, 'invite_subscribers'))) return;
     if (String(get_(found, ctx.map, 'subscribers_invited') || '').trim()) return;
+    if (isPast_(found, ctx.map)) return;             // nobody is invited to a finished event
 
     var n = inviteSubscribers_(ctx, found, foundIndex, id);
     if (n) { invited += n; sentFor.push(String(get_(found, ctx.map, 'title')).trim()); }
@@ -658,6 +675,24 @@ function flushInvites() {
       'Invited ' + invited + ' subscriber(s) to ' + sentFor.join(', '), 'EO Calendar', 10);
     } catch (e) {}
   }
+}
+
+/**
+ * Has this already happened?
+ *
+ * Nothing is CREATED for a past event, and no change to one is pushed. Creating it would mail
+ * every organiser and every subscriber an invitation to something that is over, and there is
+ * no unsend. A row with no date has not happened — "to be confirmed" is a future state.
+ */
+function isPast_(row, col) {
+  var start = iso_(get_(row, col, 'start_date'));
+  if (!start) return false;
+  var end = iso_(get_(row, col, 'end_date')) || start;
+  return end < today_();
+}
+
+function today_() {
+  return Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
 }
 
 function checked_(v) {

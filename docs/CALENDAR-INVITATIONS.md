@@ -159,7 +159,8 @@ correct it there. It should now read something like:
 
 | Moment | What happens |
 |---|---|
-| A row becomes `Published`, is complete, has a date, and `Calendar Event ID` is empty | The event is created **immediately**, and everyone in `DEFAULT_GUESTS` is invited |
+| A row becomes `Published`, is complete, has a **future** date, and `Calendar Event ID` is empty | The event is created **immediately**, and everyone in `DEFAULT_GUESTS` is invited |
+| The same, but the date has **already passed** | Nothing. No event, no invitations |
 | A date, time, timezone or title is changed on a row that already has an event | Queued, and sent **about five minutes after you stop editing** |
 | Anything else changes — room, description, guests | Nothing. The organiser owns those |
 | Hourly | A sweep catches anything the above missed |
@@ -232,6 +233,19 @@ Stored as a Script Property rather than in `Calendar.gs`, because they are real 
 addresses and that file is in a public repository. Leave it empty and no one is added.
 
 Changing it does not touch events that already exist — it applies to the next one created.
+
+### Events that have already happened
+
+**Nothing is ever created for a past event, and no change to one is pushed.** Creating it would
+mail every organiser and every subscriber an invitation to something that is over, and there is
+no unsend.
+
+The guard is in four places, because there are four ways to reach the calendar: the hourly
+sweep, marking a row Published, a deferred date change, and ticking `Invite Subscribers?`.
+
+An event that already exists is left alone rather than cancelled — it is a record of something
+that happened. Only the day matters, not the hour: an event dated today is never past, because
+it may still be hours away.
 
 ### A published event with no date yet
 
