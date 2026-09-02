@@ -15,6 +15,9 @@ import { useEventsApi } from '../api/useEventsApi.js';
 import { chip, register, action, icon } from '../components/ui.js';
 import { richText } from '../richtext.js';
 import { vevent, googleUrl } from '../ics.js';
+
+/** The note is set with innerHTML so it can carry a link; everything interpolated is escaped. */
+const esc = (v) => e(v);
 import {
   escape as e, dayNum, dow, fullDate, dateRange, timeLabel, placeLabel,
   placeShort, nights, hasPassed,
@@ -204,9 +207,15 @@ export function wireAttend() {
                                email: form.querySelector('input').value }),
       });
       const body = await res.json();
-      note.textContent = body.message
-        || (body.ok ? 'Invitation sent.' : 'That did not work. Try again in a moment.');
       note.className = `addcal-note ${body.ok ? 'good' : 'bad'}`;
+      // The link is offered on success because the email is not guaranteed: a personal Gmail
+      // account may not auto-add an invitation from a shared calendar, and it can land in
+      // spam. Saying "sent" and stopping there leaves somebody staring at an empty calendar.
+      note.innerHTML = body.ok && body.link
+        ? `${esc(body.message)} <a href="${esc(body.link)}" target="_blank" rel="noopener">`
+          + 'Open it in Google Calendar</a> if it does not appear.'
+        : esc(body.message || (body.ok
+            ? 'Done.' : 'That did not work. Try again in a moment.'));
       if (body.ok) form.remove();
     } catch {
       note.textContent = 'That did not work. Try again in a moment.';

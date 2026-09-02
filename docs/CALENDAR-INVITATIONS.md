@@ -283,6 +283,32 @@ Then, end to end:
 
 If step 4 still shows the copy buttons, the row has no `Calendar Event ID` yet: run the sync.
 
+## "It says I am on the list, but nothing arrived"
+
+The two halves are independent. Being **on the guest list** is what the site controls and can
+prove; whether an **email arrives** is Google's decision and depends on the recipient's account.
+
+Check the guest list first — that is the fact:
+
+```bash
+npm run check     # then open the event in Google Calendar and look at the guests
+```
+
+If the address is there with `needsAction`, the site did its job. Then:
+
+* **A personal `@gmail.com` account often does not auto-add** an invitation from a shared
+  Workspace calendar. Gmail → Settings → General → *Events from Gmail* controls it, and the
+  default is not "always"
+* **Check spam.** Invitations from a calendar address rather than a person are a common
+  false positive
+* **Google only emails when the guest list actually changes.** Pressing the button a second
+  time finds the address already there and sends nothing — by design, or a stuck form would
+  mail somebody repeatedly
+
+This is why the confirmation offers **"Open it in Google Calendar"** rather than only saying
+*sent*. The link works regardless of what the recipient's mail settings do, and it is the same
+event — not a copy.
+
 ## If it does not work
 
 | Symptom | Cause |
