@@ -613,7 +613,11 @@ function setUpSubscriptions() {
     tab = ss.insertSheet(SUBS_TAB);
     tab.getRange(1, 1, 1, SUBS_COLUMNS.length).setValues([SUBS_COLUMNS]).setFontWeight('bold');
     tab.setFrozenRows(1);
-    tab.getRange('D2:D').insertCheckboxes();
+    // Only the rows a person will actually see. Checkboxes down the WHOLE column make every
+    // blank row count as data, and an appended subscriber then lands a thousand rows below the
+    // header where nobody finds them.
+    tab.getRange('D2:D200').insertCheckboxes();
+    if (tab.getMaxRows() > 200) tab.deleteRows(201, tab.getMaxRows() - 200);
     tab.getRange('E:E').setNote('Written by the site. Do not edit — it is what makes an '
       + 'unsubscribe link work.');
     tab.setColumnWidth(1, 240); tab.setColumnWidth(3, 200);

@@ -66,12 +66,21 @@ console.log('\njoining');
 reset([]);
 let r = await subscribe(env, { email: ' New.Person@Example.COM ', name: 'New Person' });
 check('accepted', r.ok === true);
-check('appended in the documented column order',
+check('written to the first free row, not appended past a thousand checkboxes',
+  wrote[0].url.includes('!A2:E2'), wrote[0].url.split('/values/')[1]);
+check('written in the documented column order',
   JSON.stringify(wrote[0].body.values[0].slice(0, 4))
     === '["new.person@example.com","' + wrote[0].body.values[0][1] + '","New Person",false]',
   JSON.stringify(wrote[0].body.values[0]));
 check('the address is lower-cased', wrote[0].body.values[0][0] === 'new.person@example.com');
 check('a token is generated', String(wrote[0].body.values[0][4]).length > 20);
+
+// A sheet whose blank rows carry a checkbox: only the Email column says a row is used.
+reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a'],
+       ['', '', '', false, ''], ['', '', '', false, '']]);
+r = await subscribe(env, { email: 'second@x.com' });
+check('blank rows carrying a checkbox do not push the next subscriber down',
+  wrote[0].url.includes('!A3:E3'), wrote[0].url.split('/values/')[1]);
 
 reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
 r = await subscribe(env, { email: 'A@X.com' });
