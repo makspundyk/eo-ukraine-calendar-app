@@ -97,6 +97,19 @@ function setDefaultGuests() {
   tell_('Default guests: ' + (v || '(none)'));
 }
 
+/** The address the "Full details" link in each invitation points at. */
+function setSiteUrl() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+  var answer = ui.prompt('Website address',
+    'Where the calendar is published, e.g. https://eo-ukraine-calendar-app.pages.dev'
+    + '\n\nCurrently: ' + (props.getProperty('SITE_URL') || '(none)'), ui.ButtonSet.OK_CANCEL);
+  if (answer.getSelectedButton() !== ui.Button.OK) return;
+  var v = answer.getResponseText().trim();
+  if (v) props.setProperty('SITE_URL', v); else props.deleteProperty('SITE_URL');
+  tell_('Website address: ' + (v || '(none)'));
+}
+
 /** Skips the wait, for when you know you have finished editing. */
 function flushNow() {
   var map = pending_();
@@ -131,6 +144,7 @@ function onOpen() {
     .addItem('Install hourly sync', 'installTrigger')
     .addItem('Set calendar…', 'setCalendarId')
     .addItem('Set default guests…', 'setDefaultGuests')
+    .addItem('Set website address…', 'setSiteUrl')
     .addItem('Apply pending changes now', 'flushNow')
     .addItem('Which calendar am I writing to?', 'whichCalendar')
     .addToUi();
@@ -525,7 +539,10 @@ var HEADERS = {
   start_date: ['start date'], end_date: ['end date'],
   start_time: ['start time'], end_time: ['end time'], timezone: ['timezone'],
   location: ['location', 'place'], venue: ['venue'],
-  summary: ['summary'], registration_url: ['registration url'],
+  date_note: ['date note'], summary: ['summary'], description: ['description'],
+  highlights: ['highlights'], who_for: ['who for'],
+  speaker_name: ['speaker name'], speaker_title: ['speaker title'],
+  registration_url: ['registration url'],
   calendar_event_id: ['calendar event id'], calendar_link: ['calendar link']
 };
 
@@ -608,15 +625,133 @@ function addMinutes_(t, mins) {
   return ('0' + Math.floor(total / 60) % 24).slice(-2) + ':' + ('0' + total % 60).slice(-2);
 }
 
+/**
+ * The invitation body.
+ *
+ * Written to be read in a Google Calendar notification email, where there is no styling worth
+ * relying on and the reader is deciding in about four seconds. So: the reason first, then the
+ * facts, then the action.
+ *
+ * The date, time and place are repeated here even though the event carries them in its own
+ * fields. That is deliberate — a forwarded invitation, a notification on a watch, a text-only
+ * mail client: all of them can show the description with none of the chrome around it.
+ *
+ * Plain text, not HTML. Calendar clients render description HTML inconsistently and the
+ * organiser edits this by hand afterwards; markup she did not write would be in her way.
+ */
 function description_(row, col) {
-  var parts = [];
-  var s = String(get_(row, col, 'summary') || '').trim();
-  var r = String(get_(row, col, 'registration_url') || '').trim();
-  if (s) parts.push(s);
-  if (r) parts.push('Register: ' + r);
-  parts.push('', 'Created from the events sheet. Edit this description freely — the sync only '
+  var out = [];
+  var site = PropertiesService.getScriptProperties().getProperty('SITE_URL') || '';
+
+  var summary = String(get_(row, col, 'summary') || '').trim();
+  if (summary) out.push(summary, '');
+
+  out.push('WHEN');
+  out.push(whenLines_(row, col).join('\n'), '');
+
+  var where = whereLine_(row, col);
+  if (where) out.push('WHERE', where, '');
+
+  var speaker = String(get_(row, col, 'speaker_name') || '').trim();
+  if (speaker) {
+    var title = String(get_(row, col, 'speaker_title') || '').trim();
+    out.push('SPEAKER', speaker + (title ? ' — ' + title : ''), '');
+  }
+
+  var highlights = String(get_(row, col, 'highlights') || '').trim();
+  if (highlights) {
+    var lines = highlights.split(/\r?\n/).map(function (l) { return l.trim(); })
+      .filter(function (l) { return l; })
+      .map(function (l) { return '• ' + l; });
+    if (lines.length) out.push('WHAT YOU GET OUT OF IT', lines.join('\n'), '');
+  }
+
+  var whoFor = String(get_(row, col, 'who_for') || '').trim();
+  if (whoFor) out.push('WHO IT IS FOR', whoFor, '');
+
+  var reg = String(get_(row, col, 'registration_url') || '').trim();
+  if (reg) out.push('REGISTER', reg, '');
+
+  if (site) {
+    var slug = slugify_(String(get_(row, col, 'title') || ''));
+    var start = iso_(get_(row, col, 'start_date'));
+    out.push('Full details: ' + site.replace(/\/+$/, '') + '/#/event/'
+      + slug + (start ? '-' + start : ''), '');
+  }
+
+  out.push('—', 'Created from the EO events sheet. Edit this freely: the sync only ever '
     + 'corrects the title and the times, and will not overwrite what you write here.');
-  return parts.join('\n');
+
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** "Wednesday, 16 September 2026" / "15:30 – 17:00 CET (1 hour 30 minutes)" */
+function whenLines_(row, col) {
+  var start = iso_(get_(row, col, 'start_date'));
+  if (!start) {
+    var note = String(get_(row, col, 'date_note') || '').trim();
+    return [note || 'To be confirmed'];
+  }
+  var end = iso_(get_(row, col, 'end_date')) || start;
+  var lines = [];
+
+  if (end !== start) {
+    lines.push(longDate_(start) + '  to  ' + longDate_(end));
+    lines.push(daysBetween_(start, end) + ' days');
+  } else {
+    lines.push(longDate_(start));
+  }
+
+  var t1 = String(get_(row, col, 'start_time') || '').trim();
+  if (t1) {
+    var zone = String(get_(row, col, 'timezone') || 'CET').trim();
+    var t2 = String(get_(row, col, 'end_time') || '').trim();
+    var line = t2 ? pad_(t1) + ' – ' + pad_(t2) + ' ' + zone : pad_(t1) + ' ' + zone;
+    var mins = t2 ? minutesBetween_(t1, t2) : 0;
+    if (mins > 0) line += ' (' + durationLabel_(mins) + ')';
+    lines.push(line);
+  }
+  return lines;
+}
+
+function whereLine_(row, col) {
+  var location = String(get_(row, col, 'location') || '').trim();
+  var venue = String(get_(row, col, 'venue') || '').trim();
+  if (location.toLowerCase() === 'online') {
+    return 'Online' + (venue && venue.toLowerCase() !== 'online' ? ' — ' + venue : '');
+  }
+  if (venue && location) return venue + ', ' + location;
+  return venue || location || '';
+}
+
+function longDate_(iso) {
+  var p = iso.split('-');
+  return Utilities.formatDate(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])), 'UTC',
+    'EEEE, d MMMM yyyy');
+}
+
+function daysBetween_(a, b) {
+  var pa = a.split('-'), pb = b.split('-');
+  return Math.round((Date.UTC(+pb[0], +pb[1] - 1, +pb[2])
+    - Date.UTC(+pa[0], +pa[1] - 1, +pa[2])) / 86400000) + 1;
+}
+
+function minutesBetween_(t1, t2) {
+  var a = t1.split(':'), b = t2.split(':');
+  var m = ((+b[0]) * 60 + (+b[1] || 0)) - ((+a[0]) * 60 + (+a[1] || 0));
+  return m < 0 ? m + 1440 : m;                      // an evening event running past midnight
+}
+
+function durationLabel_(mins) {
+  var h = Math.floor(mins / 60), m = mins % 60;
+  var parts = [];
+  if (h) parts.push(h + (h === 1 ? ' hour' : ' hours'));
+  if (m) parts.push(m + ' minutes');
+  return parts.join(' ');
+}
+
+function slugify_(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 /** Cancelled rather than deleted: guests are told instead of the event vanishing. */

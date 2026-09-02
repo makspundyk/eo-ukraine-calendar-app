@@ -10,14 +10,17 @@ const PropertiesService = { getScriptProperties: () => ({
 }) };
 const Utilities = { formatDate: (d, _tz, fmt) => {
   const p = (n) => String(n).padStart(2, '0');
-  return fmt === 'yyyy-MM-dd'
-    ? \`\${d.getUTCFullYear()}-\${p(d.getUTCMonth() + 1)}-\${p(d.getUTCDate())}\` : '';
+  if (fmt === 'yyyy-MM-dd')
+    return \`\${d.getUTCFullYear()}-\${p(d.getUTCMonth() + 1)}-\${p(d.getUTCDate())}\`;
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long',
+    day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 } };
 const Logger = { log() {} }; const SpreadsheetApp = { getActiveSpreadsheet: () => { throw 0; } };
 `;
 const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
-  + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED };'));
+  + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
+  + 'description_, durationLabel_, minutesBetween_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -49,6 +52,54 @@ check('an evening event ending past midnight rolls to the next day',
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime.startsWith('2026-09-17'),
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime);
 check('single-digit hours are padded', mod.addMinutes_('09:00', 90) === '10:30');
+
+console.log('\nthe invitation body');
+const D = ['Status','Type','Title','Start Date','End Date','Start Time','End Time','Timezone',
+           'Date Note','Location','Venue','Summary','Highlights','Who For','Speaker Name',
+           'Speaker Title','Registration URL'];
+const dhead = mod.findHeaderRow_([D]);
+const drow = (o) => D.map((h) => o[h] ?? '');
+globalThis.__props = { SITE_URL: 'https://eo.example/' };
+const body = mod.description_(drow({
+  Title: 'Forum Test Drive — September', 'Start Date': '2026-09-16',
+  'Start Time': '15:30', 'End Time': '17:00', Timezone: 'CET', Location: 'Online',
+  Summary: 'Ninety minutes inside a real EO forum — the format, not a description of it.',
+  Highlights: 'How a forum actually runs\nThe confidentiality rule, in practice\nWhether it is for you',
+  'Who For': 'Prospective members, and anyone curious.',
+  'Speaker Name': 'Anna Koval', 'Speaker Title': 'Moderator, EO Kyiv',
+  'Registration URL': 'https://example.org/register',
+}), dhead.map);
+
+check('opens with the reason, not a label', body.startsWith('Ninety minutes'));
+check('spells the date out in full', body.includes('Wednesday, 16 September 2026'), body.slice(0,120));
+check('gives the time with the zone', body.includes('15:30 – 17:00 CET'));
+check('states the duration', body.includes('(1 hour 30 minutes)'), body.match(/\(.*minutes\)/)?.[0]);
+check('names the place', body.includes('WHERE\nOnline'));
+check('names the speaker with their title', body.includes('Anna Koval — Moderator, EO Kyiv'));
+check('bullets the highlights', (body.match(/• /g) || []).length === 3);
+check('carries who it is for', body.includes('Prospective members'));
+check('ends on the action', body.indexOf('REGISTER') > body.indexOf('WHO IT IS FOR'));
+check('links back to the event page',
+  body.includes('https://eo.example/#/event/forum-test-drive-september-2026-09-16'),
+  body.match(/Full details:.*/)?.[0]);
+check('tells the organiser her edits are safe', body.includes('will not overwrite'));
+check('no triple blank lines', !/\n\n\n/.test(body));
+
+const multi = mod.description_(drow({ Title: 'Retreat', 'Start Date': '2026-11-10',
+  'End Date': '2026-11-15', Location: 'Malta' }), dhead.map);
+check('a span reads as a range plus a day count',
+  multi.includes('Tuesday, 10 November 2026  to  Sunday, 15 November 2026')
+  && multi.includes('6 days'), multi.slice(0, 160));
+const tbc = mod.description_(drow({ Title: 'Powerhouse', 'Date Note': 'Expected spring 2027' }),
+  dhead.map);
+check('an undated event says when it is expected', tbc.includes('Expected spring 2027'));
+
+check('an evening event running past midnight has a sane duration',
+  mod.minutesBetween_('22:00', '01:00') === 180);
+check('durations read naturally',
+  mod.durationLabel_(90) === '1 hour 30 minutes' && mod.durationLabel_(120) === '2 hours'
+  && mod.durationLabel_(45) === '45 minutes');
+globalThis.__props = {};
 
 console.log('\nthe quiet period before a date change is sent');
 globalThis.__props = {};

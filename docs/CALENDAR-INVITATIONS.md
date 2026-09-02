@@ -158,6 +158,55 @@ something is queued cannot send the update to the wrong event.
 
 If you know you are finished: **EO Calendar → Apply pending changes now**.
 
+### What the invitation says
+
+The description is composed from the sheet when the event is created, written to be read in a
+Google Calendar notification email — no styling worth relying on, and a reader deciding in
+about four seconds. Reason first, then facts, then the action:
+
+```
+Ninety minutes inside a real EO forum — the format, not a description of it.
+
+WHEN
+Wednesday, 16 September 2026
+15:30 – 17:00 CET (1 hour 30 minutes)
+
+WHERE
+Online — Zoom
+
+SPEAKER
+Maria Novak — Certified Forum Facilitator
+
+WHAT YOU GET OUT OF IT
+• Experience the Forum format from the inside
+• Practice experience sharing instead of advice giving
+• Understand confidentiality and trust principles
+
+WHO IT IS FOR
+Prospective EO members and members who want to understand the Forum experience.
+
+REGISTER
+https://example.com/eo-ukraine/forum-test-drive-september
+
+Full details: https://…/#/event/forum-test-drive-september-2026-09-16
+```
+
+Every section is dropped when its column is empty, so a thin row produces a short invitation
+rather than a scaffold of empty headings.
+
+**The date, time and place are repeated** even though the event already carries them in its own
+fields. A forwarded invitation, a notification on a watch, a text-only mail client — all of
+them can show the description with none of the chrome around it.
+
+**Plain text, not HTML.** Calendar clients render description markup inconsistently, and the
+organiser edits this by hand afterwards; markup she did not write would be in her way.
+
+Set the "Full details" address once: **EO Calendar → Set website address…**. Leave it unset and
+that line is omitted.
+
+Written **once, at creation**. Every later sync corrects only the title and the times, so
+anything the organiser adds here survives.
+
 ### Default guests
 
 **EO Calendar → Set default guests…**, comma separated. They are invited to every **new** event
