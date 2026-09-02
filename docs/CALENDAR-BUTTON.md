@@ -68,25 +68,28 @@ the two events that need a room and skipped for the rest.
 **Make the calendar itself readable** (public, or shared with the chapter) or the link opens a
 permission wall. Test it while signed out before announcing.
 
-## 4. Invite on click — the one to avoid for now
+## 4. Invite on click — built, and switched off until an admin turns it on
 
-The idea: a member clicks, we add their email as a guest on the organiser's event.
+A member types their address and lands ON the organiser's event as a guest. Google emails
+them the invitation, shows them the room, and pushes every later change.
 
-Real, and generally not worth it:
+This is the best experience of the four, and it is implemented — but it stays inert until a
+Workspace admin authorises one scope, because **a service account acting as itself cannot
+invite attendees**; it has to act *as* a person in the domain.
+([Google: inviting attendees](https://developers.google.com/workspace/calendar/api/concepts/inviting-attendees-to-events))
 
-- **A service account cannot reliably invite attendees.** It needs Google Workspace
-  **domain-wide delegation** so it can act as a user in the domain; without it, adding
-  attendees is restricted. That is a Workspace admin decision, not a code change.
-  ([Google: inviting attendees](https://developers.google.com/workspace/calendar/api/concepts/inviting-attendees-to-events))
-- **It means collecting email addresses** — a form, consent, storage, and a reason to keep
-  them. Everything above collects nothing.
-- **It needs write access to a calendar**, so a bug can now damage the organiser's real events
-  rather than just failing to read.
-- **The guest list becomes visible to guests** unless `guestsCanSeeOtherGuests` is set false —
-  publishing who is attending, which nobody asked for.
+Setup is in **[`CALENDAR-INVITATIONS.md`](CALENDAR-INVITATIONS.md)** — one delegated scope, one
+environment variable, and an Apps Script pasted into the sheet. Until then the page falls back
+to option 1 on its own; nothing breaks.
 
-Option 3 gets almost all the benefit for none of this. Revisit 4 only if RSVPs from the site
-itself become a requirement, and then treat it as its own project with its own consent flow.
+Costs to accept, all of which are handled but none of which disappear:
+
+- **It collects an email address** — to send the invitation, and for nothing else. It is not
+  logged, not returned, not stored. Options 1–3 collect nothing at all
+- **It holds write access to a real calendar**, so a mistake can damage the organiser's events
+  rather than merely failing to read. Everything the endpoint writes is limited to appending
+  one attendee
+- **The guest list would be public** without `guestsCanSeeOtherGuests: false`
 
 ---
 

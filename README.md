@@ -161,6 +161,11 @@ Read that before starting a similar project.
 [`docs/Cloudflare-POC-standard.pdf`](docs/Cloudflare-POC-standard.pdf) is the same document for
 sharing, regenerated from `docs/cloudflare-standard-print.html`.
 
+Calendar invitations — the sheet creating real Google Calendar events and the site adding
+guests to them — are in [`docs/CALENDAR-INVITATIONS.md`](docs/CALENDAR-INVITATIONS.md); the
+four ways an "add to calendar" button can work are compared in
+[`docs/CALENDAR-BUTTON.md`](docs/CALENDAR-BUTTON.md).
+
 **Before wiring the live sheet, read [`docs/SHEET.md`](docs/SHEET.md)** — the 22-column
 standard the sheet has to follow, and the ten things the current file gets wrong.
 [`docs/EO-events-sheet-standard.pdf`](docs/EO-events-sheet-standard.pdf) is the same document

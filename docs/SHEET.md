@@ -43,6 +43,12 @@ of the same thing both work. Two rows identical in title, date, time, place and 
 same event typed twice; the calendar still shows both, but flags it, because at that point
 only the row number tells them apart and that is not stable.
 
+### Two columns the Apps Script writes for you
+
+If the chapter uses calendar invitations, the script adds `Calendar Event ID` and
+`Calendar Link` itself and keeps them filled. **Do not type in them.** See
+[`CALENDAR-INVITATIONS.md`](CALENDAR-INVITATIONS.md).
+
 ### One more optional column: `Calendar Link`
 
 Paste the URL of the organiser's own Google Calendar event and the event page shows

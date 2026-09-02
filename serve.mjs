@@ -12,7 +12,8 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, dirname } from 'node:path';
-import { getCalendar, readConfig } from './lib/calendar.mjs';
+import { getCalendar, readConfig, findCalendarEventId } from './lib/calendar.mjs';
+import { addAttendee } from './lib/attend.mjs';
 import { getFeed } from './lib/ics-feed.mjs';
 
 const HERE = dirname(new URL(import.meta.url).pathname);
@@ -90,6 +91,21 @@ const HEADERS = await globalHeaders();
 
 createServer(async (req, res) => {
   let p = new URL(req.url, 'http://x').pathname;
+
+  if (p === '/api/attend' && req.method === 'POST') {
+    const raw = await new Promise((r) => { let d = ''; req.on('data', (c) => { d += c; });
+      req.on('end', () => r(d)); });
+    let input = {};
+    try { input = JSON.parse(raw); } catch { /* handled by the validator */ }
+    const { body: listBody } = await getCalendar(ENV, { scope: 'all' });
+    const match = listBody.ok ? findCalendarEventId(listBody.events, String(input.event ?? '')) : null;
+    const out = await addAttendee(ENV, { calendarEventId: match?.calendarEventId,
+                                        email: input.email });
+    console.log(`  ${out.logLine}`);
+    res.writeHead(out.status, { ...HEADERS, 'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store' });
+    return res.end(JSON.stringify(out.body, null, 2));
+  }
 
   if (p === '/api/calendar.ics') {
     const feed = await getFeed(ENV, { origin: `http://localhost:${PORT}` });

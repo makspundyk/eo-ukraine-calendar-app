@@ -374,3 +374,12 @@
 .subscribe span{display:block;font-size:13.5px;color:var(--ink-3);margin-top:3px;max-width:52ch}
 .addcal-btn.primary{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .addcal-btn.primary:hover{background:var(--accent);color:var(--accent-ink)}
+.attend{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.attend input{height:34px;padding:0 12px;border-radius:var(--r-pill);border:0;
+  box-shadow:inset 0 0 0 1px var(--rule);background:var(--surface);color:var(--ink);
+  font:inherit;font-size:13px;min-width:200px}
+.attend input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.attend button{border:0;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;height:34px}
+.attend button:disabled{opacity:.6;cursor:default}
+.addcal-note.good{color:var(--t-global)}
+.addcal-note.bad{color:var(--t-social)}

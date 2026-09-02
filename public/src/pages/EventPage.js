@@ -45,6 +45,7 @@ export async function load(route) {
 /** Fetch the rest, then repaint in place. */
 export async function mount({ ev, partial }, { rerender } = {}) {
   wireDownload(ev);
+  wireAttend();
   if (!partial || !rerender) return;
   const full = await api.byId(ev.id);
   if (full) rerender({ ev: full, partial: false });
@@ -143,6 +144,23 @@ const addToCalendar = (ev) => {
     </div>`;
   }
 
+  // The organiser has a real event and the site can put the member ON it. One field, because
+  // the address is the only thing we do not already know, and it is not stored anywhere here.
+  if (ev.invitable) {
+    return `
+    <div class="addcal">
+      <span class="addcal-label">${icon('cal')} Get the calendar invitation</span>
+      <form class="attend" data-attend="${e(ev.id)}">
+        <input type="email" name="email" required autocomplete="email"
+               placeholder="your@email.com" aria-label="Your email address" />
+        <button type="submit" class="addcal-btn primary">Send it to me</button>
+      </form>
+      <span class="addcal-note" data-attend-note>The organiser's own event, so the room and any
+        later change reach you automatically. Your address is used for this invitation and is
+        not stored by this site.</span>
+    </div>`;
+  }
+
   const g = googleUrl(ev, { origin: location.origin });
   return `
   <div class="addcal">
@@ -158,6 +176,40 @@ const addToCalendar = (ev) => {
  * The download is wired after render rather than with an inline handler, because the
  * Content-Security-Policy forbids inline script — see public/_headers.
  */
+/** Submits the one field to /api/attend and reports back in place. */
+export function wireAttend() {
+  const form = document.querySelector('[data-attend]');
+  if (!form) return;
+  const note = document.querySelector('[data-attend-note]');
+  const button = form.querySelector('button');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    const previous = button.textContent;
+    button.textContent = 'Sending…';
+    try {
+      const res = await fetch('/api/attend', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event: form.dataset.attend,
+                               email: form.querySelector('input').value }),
+      });
+      const body = await res.json();
+      note.textContent = body.message
+        || (body.ok ? 'Invitation sent.' : 'That did not work. Try again in a moment.');
+      note.className = `addcal-note ${body.ok ? 'good' : 'bad'}`;
+      if (body.ok) form.remove();
+    } catch {
+      note.textContent = 'That did not work. Try again in a moment.';
+      note.className = 'addcal-note bad';
+    } finally {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  });
+}
+
 export function wireDownload(ev) {
   const link = document.querySelector('[data-ics]');
   if (!link) return;
