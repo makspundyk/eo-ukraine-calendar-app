@@ -1,0 +1,668 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EO Events Sheet Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+</head><body><style>
+  :root{
+    --paper:#FBFAF8; --surface:#FFFFFF; --surface-2:#F4F2EE; --surface-3:#EAE7E1;
+    --ink:#141311; --ink-2:#565248; --ink-3:#8C877C;
+    --accent:#123A63; --accent-2:#1B5C9B; --accent-soft:#E8EFF6;
+    --rule:rgba(20,19,17,.10); --rule-2:rgba(20,19,17,.06);
+    --t-learning:#1B5C9B; --t-forum:#7A4FBF; --t-chapter:#B4632A;
+    --t-global:#136B53; --t-social:#B03A5B;
+    --good:#1F6B4A; --good-soft:#E6F2EB;
+    --bad:#9C3247; --bad-soft:#F9EAED;
+    --warn:#8A4B10; --warn-soft:#FBF0E4;
+    --e1:0 1px 2px rgba(20,19,17,.04), 0 1px 3px rgba(20,19,17,.03);
+    --r:14px; --r-sm:8px; --r-pill:999px;
+    --display:'Fraunces',Georgia,serif;
+    --ui:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --col:820px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#131211; --surface:#1B1A18; --surface-2:#232120; --surface-3:#2C2A27;
+      --ink:#F3F1ED; --ink-2:#BDB8AF; --ink-3:#8F8A80;
+      --accent:#8FBBE4; --accent-2:#A9CCEE; --accent-soft:#1E2C3A;
+      --rule:rgba(243,241,237,.14); --rule-2:rgba(243,241,237,.08);
+      --t-learning:#7FB3E4; --t-forum:#B79BE8; --t-chapter:#E0A272;
+      --t-global:#6FC0A6; --t-social:#E290A8;
+      --good:#7FCBA4; --good-soft:#16251E;
+      --bad:#E8909F; --bad-soft:#2A1A1E;
+      --warn:#E2A96B; --warn-soft:#2B2118;
+      --e1:0 1px 2px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#131211; --surface:#1B1A18; --surface-2:#232120; --surface-3:#2C2A27;
+    --ink:#F3F1ED; --ink-2:#BDB8AF; --ink-3:#8F8A80;
+    --accent:#8FBBE4; --accent-2:#A9CCEE; --accent-soft:#1E2C3A;
+    --rule:rgba(243,241,237,.14); --rule-2:rgba(243,241,237,.08);
+    --t-learning:#7FB3E4; --t-forum:#B79BE8; --t-chapter:#E0A272;
+    --t-global:#6FC0A6; --t-social:#E290A8;
+    --good:#7FCBA4; --good-soft:#16251E;
+    --bad:#E8909F; --bad-soft:#2A1A1E;
+    --warn:#E2A96B; --warn-soft:#2B2118;
+    --e1:0 1px 2px rgba(0,0,0,.3);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);
+    font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--col);margin:0 auto;padding:0 24px}
+
+  header{border-bottom:1px solid var(--rule);padding:72px 0 44px;margin-bottom:52px}
+  .eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 14px}
+  h1{font-family:var(--display);font-size:clamp(34px,5vw,52px);font-weight:600;line-height:1.06;
+    letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .lede{font-size:18px;line-height:1.6;color:var(--ink-2);margin:18px 0 0;max-width:58ch}
+
+  .rules{display:grid;gap:10px;margin:34px 0 0}
+  .rule{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    background:var(--surface);border-radius:var(--r);box-shadow:var(--e1);padding:16px 18px}
+  .rule i{font-style:normal;font-family:var(--display);font-size:15px;font-weight:600;
+    width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+  .rule p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-2)}
+  .rule b{color:var(--ink);font-weight:600}
+
+  section{margin:0 0 60px}
+  h2{font-family:var(--display);font-size:27px;font-weight:600;letter-spacing:-.015em;
+    margin:0 0 6px;text-wrap:balance}
+  .sub{font-size:15px;color:var(--ink-3);margin:0 0 26px;max-width:62ch}
+  p{margin:0 0 14px;color:var(--ink-2)}
+  p.tight{margin-bottom:8px}
+  .ink{color:var(--ink)}
+
+  /* ---- contents strip ---- */
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+  .toc a{font-family:var(--mono);font-size:12.5px;text-decoration:none;color:var(--ink-2);
+    background:var(--surface);box-shadow:var(--e1);border-radius:var(--r-pill);padding:5px 11px}
+  .toc a:hover{color:var(--ink)}
+  .toc a b{color:var(--ink-3);font-weight:400;margin-right:5px}
+
+  /* ---- one column ---- */
+  .field{background:var(--surface);border-radius:var(--r);box-shadow:var(--e1);
+    padding:22px 26px;margin:0 0 10px;scroll-margin-top:24px}
+  .fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .fnum{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .fname{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink)}
+  .pill{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    border-radius:var(--r-pill);padding:3px 8px;white-space:nowrap}
+  .req{background:var(--accent);color:var(--paper)}
+  .rec{color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--rule)}
+  .ctl{color:var(--accent);background:var(--accent-soft)}
+  .fwhat{font-size:15.5px;color:var(--ink);margin:0 0 12px}
+  .field p{font-size:14.5px}
+  .field p:last-child{margin-bottom:0}
+
+  .ex{display:grid;gap:6px;margin:12px 0 0}
+  .ex div{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:baseline;
+    font-size:14px;color:var(--ink-2)}
+  .ex .m{font-weight:700;font-size:12px;line-height:1.5}
+  .ex .yes .m{color:var(--good)} .ex .no .m{color:var(--bad)}
+  .ex code{font-family:var(--mono);font-size:13px;background:var(--surface-2);
+    border-radius:4px;padding:1px 6px;color:var(--ink)}
+  .ex .why{color:var(--ink-3)}
+
+  .cell{font-family:var(--mono);font-size:13px;background:var(--surface-2);border-radius:6px;
+    padding:10px 12px;white-space:pre-wrap;color:var(--ink);margin:10px 0 0;
+    box-shadow:inset 0 0 0 1px var(--rule-2)}
+
+  .flag{border-radius:var(--r-sm);padding:11px 14px;font-size:13.5px;line-height:1.55;margin:14px 0 0}
+  .flag.w{background:var(--warn-soft);color:var(--ink-2)}
+  .flag.w b{color:var(--warn)}
+  .flag.g{background:var(--good-soft);color:var(--ink-2)}
+  .flag.g b{color:var(--good)}
+
+  .vocab{display:grid;gap:2px;background:var(--rule-2);border-radius:var(--r-sm);
+    overflow:hidden;margin:12px 0 0}
+  .v{display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:baseline;
+    background:var(--surface);padding:11px 14px;font-size:14px;color:var(--ink-2)}
+  .v .dot{width:8px;height:8px;border-radius:50%;align-self:center}
+  .v code{font-family:var(--mono);font-size:13px;color:var(--ink);white-space:nowrap}
+
+  .tblwrap{overflow-x:auto;border-radius:var(--r-sm);margin:12px 0 0;
+    box-shadow:inset 0 0 0 1px var(--rule-2)}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
+  th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);padding:11px 14px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:11px 14px;border-bottom:1px solid var(--rule-2);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink)}
+  td code, th code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);
+    border-radius:4px;padding:1px 5px;color:var(--ink)}
+
+  pre{background:var(--surface);border-radius:var(--r);box-shadow:var(--e1);
+    padding:18px 20px;overflow-x:auto;margin:0 0 16px}
+  pre code{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:pre;line-height:1.7}
+  p code, li code{font-family:var(--mono);font-size:13px;background:var(--surface-2);
+    border-radius:4px;padding:1px 5px;color:var(--ink)}
+
+  ul{margin:0 0 14px;padding-left:20px}
+  li{margin-bottom:7px;color:var(--ink-2);font-size:14.5px}
+  li b{color:var(--ink);font-weight:600}
+
+  h3{font-size:12px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--ink-3);margin:34px 0 12px}
+
+  footer{border-top:1px solid var(--rule);padding:32px 0 72px;margin-top:20px;
+    font-size:13.5px;color:var(--ink-3)}
+  a{color:var(--accent-2);text-underline-offset:3px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">EO Ukraine · community calendar</p>
+    <h1>The events sheet</h1>
+    <p class="lede">One tab. One row per event. Row&nbsp;1 is the header. Twenty-two columns,
+      three of them required — filled by hand, so it is built to be short.</p>
+
+    <div class="rules">
+      <div class="rule"><i>1</i><p>The script reads <b>by header name, not by position</b>.
+        Names are matched lower-cased and trimmed, unknown columns are ignored, and column
+        order does not matter — moving or inserting a column never breaks anything.</p></div>
+      <div class="rule"><i>2</i><p>An empty cell means <b>“not known yet”</b>, never “no”. The
+        calendar hides what it does not know rather than printing something wrong.</p></div>
+      <div class="rule"><i>3</i><p><b>Row order in the sheet is irrelevant.</b> The calendar
+        always sorts by <code>Start Date</code>, earliest first, and puts every event with an
+        empty <code>Start Date</code> into “Dates to be confirmed” at the foot of the feed.
+        Sort the sheet however suits you.</p></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <h2>There is no ID column</h2>
+  <p>Every event's web address is built from its <span class="ink">Title</span>. That keeps the
+    sheet to things a human would actually type — but it has one consequence worth knowing:
+    <b class="ink">rename an event and its link changes.</b> Anyone who bookmarked or shared
+    the old link lands on “not in the calendar”.</p>
+  <p>So fix typos freely before you announce an event, and treat the title as settled
+    afterwards.</p>
+</section>
+
+<section>
+  <h2>The columns</h2>
+  <p class="sub">In the order they should sit in the sheet: the ones you need first are first,
+    so a row can be filled left to right and abandoned as soon as it is useful.</p>
+
+  <div class="toc">
+    <a href="#c1"><b>01</b>Status</a><a href="#c2"><b>02</b>Type</a><a href="#c3"><b>03</b>Title</a>
+    <a href="#c4"><b>04</b>Start Date</a><a href="#c5"><b>05</b>End Date</a>
+    <a href="#c6"><b>06</b>Start Time</a><a href="#c7"><b>07</b>End Time</a>
+    <a href="#c8"><b>08</b>Timezone</a><a href="#c9"><b>09</b>Date Note</a>
+    <a href="#c10"><b>10</b>Location</a><a href="#c11"><b>11</b>Venue</a>
+    <a href="#c12"><b>12</b>Summary</a><a href="#c13"><b>13</b>Description</a>
+    <a href="#c14"><b>14</b>Highlights</a><a href="#c15"><b>15</b>Who For</a>
+    <a href="#c16"><b>16</b>Speaker Name</a><a href="#c17"><b>17</b>Speaker Title</a>
+    <a href="#c18"><b>18</b>Speaker Bio</a><a href="#c19"><b>19</b>Guests Welcome</a>
+    <a href="#c20"><b>20</b>Registration URL</a><a href="#c21"><b>21</b>Image URL</a>
+    <a href="#c22"><b>22</b>Notes</a>
+  </div>
+
+  <div class="field" id="c1">
+    <div class="fhead"><span class="fnum">01</span><span class="fname">Status</span>
+      <span class="pill rec">Recommended</span><span class="pill ctl">Dropdown</span></div>
+    <p class="fwhat">Whether members can see this row yet.</p>
+    <div class="vocab">
+      <div class="v"><span class="dot" style="background:var(--good)"></span><code>Published</code>
+        <span>Live on the calendar.</span></div>
+      <div class="v"><span class="dot" style="background:var(--ink-3)"></span><code>Draft</code>
+        <span>You are still writing it. Nobody sees it.</span></div>
+      <div class="v"><span class="dot" style="background:var(--bad)"></span><code>Cancelled</code>
+        <span>It was announced and it is not happening. Removed from the calendar.</span></div>
+    </div>
+    <div class="flag w"><b>A blank cell counts as Published.</b> So a half-finished row is
+      visible to everyone until you set it to Draft. Set Draft first, write second.</div>
+  </div>
+
+  <div class="field" id="c2">
+    <div class="fhead"><span class="fnum">02</span><span class="fname">Type</span>
+      <span class="pill req">Required</span><span class="pill ctl">Dropdown</span></div>
+    <p class="fwhat">What kind of event it is. Drives the colour, the label and the filter tabs
+      across the top of the calendar.</p>
+    <div class="vocab">
+      <div class="v"><span class="dot" style="background:var(--t-learning)"></span>
+        <code>Learning event</code><span>A speaker teaching something — online or in a room.</span></div>
+      <div class="v"><span class="dot" style="background:var(--t-forum)"></span>
+        <code>Forum test drive</code><span>A sample forum session for prospective members.</span></div>
+      <div class="v"><span class="dot" style="background:var(--t-chapter)"></span>
+        <code>Chapter in-person</code><span>The chapter's own gatherings: retreats, dinners, chapter days.</span></div>
+      <div class="v"><span class="dot" style="background:var(--t-global)"></span>
+        <code>Global / Regional</code><span>Anything EO runs above chapter level — GLC, ELC, Unlimited, Presidents Meeting.</span></div>
+      <div class="v"><span class="dot" style="background:var(--t-social)"></span>
+        <code>Social</code><span>Purely social. No agenda, no speaker.</span></div>
+    </div>
+    <p style="margin-top:14px">Anything else is published as written but styled neutral grey,
+      and sits outside the filters.</p>
+  </div>
+
+  <div class="field" id="c3">
+    <div class="fhead"><span class="fnum">03</span><span class="fname">Title</span>
+      <span class="pill req">Required</span></div>
+    <p class="fwhat">Exactly what a member should read. Printed verbatim — so nothing
+      parenthetical, no status notes, no “TBC”.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>European Leadership Conference (ELC) 2026</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>How to Write and Publish a Book</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Forum Test Drive — October</code>
+        <span class="why">· for a session that repeats, put what tells them apart in the title</span></span></div>
+      <div class="no"><span class="m">✕</span><span><code>Joe Gregory</code>
+        <span class="why">· that is the speaker. It goes in Speaker Name</span></span></div>
+      <div class="no"><span class="m">✕</span><span><code>Chapter Retreat (waiting for dates)</code>
+        <span class="why">· leave Start Date empty instead</span></span></div>
+      <div class="no"><span class="m">✕</span><span><code>Placeholder event</code>
+        <span class="why">· set Status to Draft</span></span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c4">
+    <div class="fhead"><span class="fnum">04</span><span class="fname">Start Date</span>
+      <span class="pill req">Required once known</span></div>
+    <p class="fwhat">The day the event begins, written <code>YYYY-MM-DD</code>.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>2026-09-16</code>
+        <span class="why">· a one-day event on 16 September 2026</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>2026-10-06</code>
+        <span class="why">· a three-day conference starting 6 October</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· the date is genuinely not fixed yet — see below</span></span></div>
+    </div>
+    <div class="flag w"><b>Format the date and time columns as plain text first</b> —
+      Format → Number → Plain text. Otherwise Sheets rewrites <code>2026-10-06</code> into
+      <code>06/10/2026</code> for whoever opens it next, and the parser sees something other
+      than what you typed.</div>
+  </div>
+
+  <div class="field" id="c5">
+    <div class="fhead"><span class="fnum">05</span><span class="fname">End Date</span></div>
+    <p class="fwhat">Only when the event runs across more than one day. <code>YYYY-MM-DD</code>.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· a single-day event. Do not repeat the start date</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>2026-10-08</code>
+        <span class="why">· a conference running 6–8 October</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>2027-01-02</code>
+        <span class="why">· a retreat that crosses new year, 30 Dec – 2 Jan</span></span></div>
+    </div>
+    <p style="margin-top:14px">A multi-day event is <b class="ink">one row</b>, never one row
+      per day. The calendar counts the days itself and prints “3 days”.</p>
+  </div>
+
+  <div class="field" id="c6">
+    <div class="fhead"><span class="fnum">06</span><span class="fname">Start Time</span></div>
+    <p class="fwhat">When it begins, local to the event. <code>HH:MM</code>, 24-hour.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>15:30</code>
+        <span class="why">· half past three in the afternoon</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>09:00</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· a multi-day event where the time varies by day — put the schedule in Description</span></span></div>
+      <div class="no"><span class="m">✕</span><span><code>3:30pm</code> · <code>15 30</code>
+        · <code>15:30 CET</code> <span class="why">· the timezone has its own column</span></span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c7">
+    <div class="fhead"><span class="fnum">07</span><span class="fname">End Time</span></div>
+    <p class="fwhat">Useful only on a single-day event — it is what produces “90 minutes” on
+      the page. <code>HH:MM</code>, 24-hour.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>17:00</code>
+        <span class="why">· a session running 15:30–17:00</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· open-ended, or multi-day</span></span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c8">
+    <div class="fhead"><span class="fnum">08</span><span class="fname">Timezone</span></div>
+    <p class="fwhat">The short code the time is given in. Empty is assumed to be
+      <code>CET</code>.</p>
+    <p>Fill it in whenever the event is not on European time — a member reading from Kyiv or
+      Toronto is otherwise guessing. <code>CET</code> · <code>EET</code> · <code>JST</code></p>
+  </div>
+
+  <div class="field" id="c9">
+    <div class="fhead"><span class="fnum">09</span><span class="fname">Date Note</span></div>
+    <p class="fwhat">One short phrase, and <b class="ink">only</b> for events with no
+      <code>Start Date</code> yet. It is the difference between “we have no idea” and “hold the
+      spring”.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>Expected spring 2027</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Dates announced in January</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Two sessions, autumn</code></span></div>
+    </div>
+    <p style="margin-top:14px">Leave it empty on any event that has a real date — it is not
+      shown there.</p>
+  </div>
+
+  <div class="field" id="c10">
+    <div class="fhead"><span class="fnum">10</span><span class="fname">Location</span>
+      <span class="pill rec">Recommended</span></div>
+    <p class="fwhat">Where it physically is, as a member would say it.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>Krakow, Poland</code> ·
+        <code>Kyiv, Ukraine</code> <span class="why">· city first, then country</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Online</code>
+        <span class="why">· this one word switches the icon and the wording everywhere,
+          including “joining link sent when you register”</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· not chosen yet. The card says “Venue TBC”</span></span></div>
+    </div>
+    <p style="margin-top:14px">The card shows the city on its own, so put the city first.</p>
+  </div>
+
+  <div class="field" id="c11">
+    <div class="fhead"><span class="fnum">11</span><span class="fname">Venue</span></div>
+    <p class="fwhat">The specific place — shown only on the event page, for a member who has
+      already decided and now needs to get there.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Situation</th><th>What to write</th></tr></thead>
+        <tbody>
+          <tr><td>A hotel, restaurant or office</td>
+            <td><code>Sheraton Grand Kraków, Powiśle 7</code> — name first, then street</td></tr>
+          <tr><td>A conference centre</td><td><code>ICE Kraków Congress Centre</code></td></tr>
+          <tr><td>Online</td><td>The platform: <code>Zoom</code>, <code>Google Meet</code>,
+            <code>Microsoft Teams</code>. <b>Not the joining link</b> — that comes from
+            registration</td></tr>
+          <tr><td>A retreat across a resort or a whole town</td>
+            <td>Leave empty. <code>Location</code> already says it</td></tr>
+          <tr><td>Booked, but not announced publicly</td><td><code>Address sent on registration</code></td></tr>
+          <tr><td>Someone's home or a private space</td>
+            <td><code>Address sent on registration</code> — never a private address in a public calendar</td></tr>
+          <tr><td>Not booked yet</td><td>Leave empty. The page falls back to <code>Location</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="field" id="c12">
+    <div class="fhead"><span class="fnum">12</span><span class="fname">Summary</span>
+      <span class="pill rec">Recommended</span></div>
+    <p class="fwhat">One sentence, 120 characters or fewer. It is the line under the photograph
+      on the feed card — and for most members, the only sentence they read.</p>
+    <p>Write the reason to come, not a restatement of the title.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span>Europe's chapter leadership, together for three days in Kraków.</span></div>
+      <div class="yes"><span class="m">✓</span><span>Ninety minutes inside a real EO forum — the format, not a description of it.</span></div>
+      <div class="yes"><span class="m">✓</span><span>Six days in Malta with the chapter — the one that sets the tone for the year.</span></div>
+      <div class="no"><span class="m">✕</span><span>Join us for our upcoming learning event!
+        <span class="why">· says nothing</span></span></div>
+      <div class="no"><span class="m">✕</span><span>The first line of the description, pasted in
+        <span class="why">· it reads as a truncation</span></span></div>
+    </div>
+    <p style="margin-top:14px">Plain sentence, no HTML — the card clamps it to two lines.</p>
+  </div>
+
+  <div class="field" id="c13">
+    <div class="fhead"><span class="fnum">13</span><span class="fname">Description</span>
+      <span class="pill ctl">Text or HTML</span></div>
+    <p class="fwhat">The full text. Shown only on the event page and never truncated there, so
+      write as much as it deserves.</p>
+
+    <p><b class="ink">Plain text works.</b> A blank line starts a new paragraph; a single
+      newline is a line break. Nothing else needed.</p>
+
+    <p><b class="ink">HTML also works</b> — paste it into the cell and it renders. Supported
+      tags:</p>
+    <div class="cell">&lt;p&gt; &lt;br&gt; &lt;strong&gt; &lt;em&gt; &lt;u&gt; &lt;ul&gt; &lt;ol&gt; &lt;li&gt; &lt;a href&gt; &lt;h3&gt; &lt;h4&gt; &lt;blockquote&gt; &lt;hr&gt;</div>
+
+    <p style="margin-top:14px">Pasting formatted text straight out of Google Docs or Word works
+      too — the paragraphs survive.</p>
+
+    <div class="flag g"><b>You cannot break the page with this cell.</b> Anything outside the
+      list above is stripped and its words kept, so a stray <code>&lt;div&gt;</code> or
+      <code>&lt;span&gt;</code> costs you nothing. Scripts, styles, images and event handlers
+      are removed entirely. Links open in a new tab automatically.</div>
+
+    <h3 style="margin-top:24px">Example cell</h3>
+<pre><code>&lt;p&gt;Three days, 300 founders, one of Europe's most beautiful cities.&lt;/p&gt;
+&lt;h3&gt;What the three days look like&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Main-stage speakers, each a founder who has done the thing&lt;/li&gt;
+  &lt;li&gt;Deep dives &lt;em&gt;chosen by the attendees&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Full agenda on the &lt;a href="https://eonetwork.org/unlimited"&gt;EO Unlimited site&lt;/a&gt;.&lt;/p&gt;</code></pre>
+  </div>
+
+  <div class="field" id="c14">
+    <div class="fhead"><span class="fnum">14</span><span class="fname">Highlights</span></div>
+    <p class="fwhat">The ticked “What you get out of it” list. <b class="ink">One per line
+      inside the one cell</b> — press ⌥⏎ on a Mac, Alt+Enter on Windows, to add a line without
+      leaving the cell.</p>
+    <p>Four is the sweet spot. Write outcomes, not agenda items.</p>
+    <div class="cell">Which ideas carry a book and which do not
+Ghostwriting, hybrid and self-publishing — real costs and timelines
+What publication actually does for inbound and speaking
+The first three steps to take this month</div>
+    <p style="margin-top:14px">Leave it empty and the section is not shown at all. That is fine
+      — better nothing than four vague lines.</p>
+  </div>
+
+  <div class="field" id="c15">
+    <div class="fhead"><span class="fnum">15</span><span class="fname">Who For</span></div>
+    <p class="fwhat">One sentence naming who should come, so nobody registers for the wrong
+      room.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span>Founders considering a book, and anyone already stuck mid-draft.</span></div>
+      <div class="yes"><span class="m">✓</span><span>Chapter board members and chapter staff.</span></div>
+      <div class="yes"><span class="m">✓</span><span>All EO members. Bring your partner.</span></div>
+      <div class="yes"><span class="m">✓</span><span>Prospective members only.</span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c16">
+    <div class="fhead"><span class="fnum">16</span><span class="fname">Speaker Name</span></div>
+    <p class="fwhat">The person's name, and nothing else.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>Joe Gregory</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Anna Koval and Dmytro Sydorenko</code>
+        <span class="why">· two speakers</span></span></div>
+      <div class="yes"><span class="m">✓</span><span><i>(empty)</i>
+        <span class="why">· a conference, a retreat, a social. The speaker block is simply not shown</span></span></div>
+      <div class="no"><span class="m">✕</span><span><code>Joe Gregory, the Authority Company, part of Forbes Books</code>
+        <span class="why">· the rest belongs in Speaker Title</span></span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c17">
+    <div class="fhead"><span class="fnum">17</span><span class="fname">Speaker Title</span></div>
+    <p class="fwhat">Their role and company on one line, exactly as they would introduce
+      themselves. Shown underneath the name.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span><code>Founder, The Authority Company</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>CEO, Fasto · EO Kyiv</code></span></div>
+      <div class="yes"><span class="m">✓</span><span><code>Partner, Sayenko Kharenko</code></span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c18">
+    <div class="fhead"><span class="fnum">18</span><span class="fname">Speaker Bio</span></div>
+    <p class="fwhat">One or two sentences: the reason to trust this person on this topic. Not a
+      CV.</p>
+    <div class="ex">
+      <div class="yes"><span class="m">✓</span><span>Has taken hundreds of founders from “I should write something” to a printed book.</span></div>
+      <div class="no"><span class="m">✕</span><span>A paragraph of career history</span></div>
+    </div>
+  </div>
+
+  <div class="field" id="c19">
+    <div class="fhead"><span class="fnum">19</span><span class="fname">Guests Welcome</span>
+      <span class="pill ctl">Checkbox</span></div>
+    <p class="fwhat">Tick it when a member may bring a prospective member or a partner.</p>
+    <p>It puts a “Guests welcome” chip on the card and a line in the details. Unticked means
+      no — this is the one column where an empty cell means “no” rather than “not known”,
+      because a checkbox has no third state.</p>
+  </div>
+
+  <div class="field" id="c20">
+    <div class="fhead"><span class="fnum">20</span><span class="fname">Registration URL</span>
+      <span class="pill req">Required</span></div>
+    <p class="fwhat">The full <code>https://</code> link that registers a member. It sits behind
+      every Register button — on the feed, the list and the event page.</p>
+    <ul>
+      <li>An EO registration page, an Eventbrite link, a Google Form, a Typeform: all fine</li>
+      <li><b>Registration not open yet</b> → point it at the page members should watch, or
+        leave the row as <code>Draft</code> until it is</li>
+      <li>A <code>mailto:</code> address works, but a form is better — you get the attendee
+        list for free</li>
+    </ul>
+  </div>
+
+  <div class="field" id="c21">
+    <div class="fhead"><span class="fnum">21</span><span class="fname">Image URL</span>
+      <span class="pill rec">Recommended</span></div>
+    <p class="fwhat">A link to the picture <b class="ink">file</b>, not to the page it sits on.
+      If the link does not end in <code>.jpg</code>, <code>.png</code> or <code>.webp</code>,
+      or does not open the picture on its own, it will not load.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Source</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>Unsplash</td><td>Right-click the photo → Copy image address.
+            <code>images.unsplash.com/photo-15223832…?w=1600&amp;q=70</code></td></tr>
+          <tr><td>Wikimedia Commons</td><td>Use the “Original file” link. Wikimedia only serves
+            <i>certain</i> widths — <code>1280px-</code> works, <code>1600px-</code> fails</td></tr>
+          <tr><td>Your own photo</td><td>Upload somewhere that serves files directly. A Google
+            Drive share link <b>will not work</b> — it serves a viewer page</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="flag w">Landscape, at least 1200px wide, with the interesting part in the
+      <b>upper half</b> — the lower half sits under a frosted band carrying the date, place and
+      title.</div>
+    <p style="margin-top:14px">Leave it empty and the card falls back to a stock image chosen by
+      <code>Type</code>. It looks fine; it just does not look like the event.</p>
+  </div>
+
+  <div class="field" id="c22">
+    <div class="fhead"><span class="fnum">22</span><span class="fname">Notes</span></div>
+    <p class="fwhat">Internal. Never rendered anywhere.</p>
+    <p>Anything you do not want a member to read goes here and nowhere else — who is chasing
+      the venue, what the budget is, why the date moved.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Events whose dates are not confirmed</h2>
+  <p><b class="ink">Leave <code>Start Date</code> empty. That is the whole mechanism.</b> The
+    event drops out of the dated feed and appears in “Dates to be confirmed” at the bottom, as
+    a compact row carrying its type, title, location and a <i>Register interest</i> button.</p>
+  <p>Fill in everything else you know — <code>Title</code>, <code>Type</code>,
+    <code>Location</code>, <code>Summary</code>, <code>Registration URL</code> — and add a
+    <code>Date Note</code> if you can say roughly when. When the date lands, type it into
+    <code>Start Date</code> and the event moves into the feed on its own.</p>
+  <div class="flag w">Do not write “TBC” into the <code>Title</code> or “TBD” into
+    <code>Start Date</code>. <b>Both are printed to members.</b></div>
+</section>
+
+<section>
+  <h2>What the current sheet has to change</h2>
+  <p class="sub">Ten differences between the file as it stands and the standard above. Each one
+    is something the parser repairs at read time today and records as a data issue — twenty-seven
+    of them at the last run.</p>
+  <div class="tblwrap" style="box-shadow:var(--e1);background:var(--surface)">
+    <table style="min-width:640px">
+      <thead><tr><th>Today</th><th>Becomes</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>Name</code> holds the <b>speaker</b> on learning events and the
+          <b>title</b> on everything else</td>
+          <td><code>Title</code> and <code>Speaker Name</code>, always the same meaning</td>
+          <td>The single biggest trap. Read literally, five events are titled with a person's
+            name and have no description at all</td></tr>
+        <tr><td><code>Description</code> holds the <b>title</b> on learning events</td>
+          <td><code>Description</code> is always the description</td>
+          <td>The other half of the same trap</td></tr>
+        <tr><td><code>Start Date</code> = <code>18 May</code>, no year anywhere in the file</td>
+          <td><code>Start Date</code> = <code>2026-05-18</code></td>
+          <td>Removes a year inference that has already been wrong twice</td></tr>
+        <tr><td><code>Time</code> = <code>15 00 CET</code>, <code>3:30 – 5:00pm</code></td>
+          <td><code>Start Time</code>, <code>End Time</code>, <code>Timezone</code></td>
+          <td>Three facts in one cell cannot be sorted, filtered or converted</td></tr>
+        <tr><td><code>Audience</code>, free text, searched for the phrase “leads could be invited”</td>
+          <td><code>Guests Welcome</code> checkbox</td>
+          <td>A phrase match breaks the moment somebody rewords the sentence</td></tr>
+        <tr><td>speaker, role and company in one cell</td>
+          <td><code>Speaker Name</code> + <code>Speaker Title</code></td>
+          <td>The card needs the name alone; the page needs both</td></tr>
+        <tr><td><code>Place</code> blank on online events</td>
+          <td><code>Location</code> = <code>Online</code></td>
+          <td>Blank means “not known”. Online is known</td></tr>
+        <tr><td>“(waiting for dates)” written inside the title</td>
+          <td>empty <code>Start Date</code> + <code>Date Note</code></td>
+          <td>The title is printed to members exactly as typed</td></tr>
+        <tr><td>no registration link anywhere in the file</td>
+          <td><code>Registration URL</code></td>
+          <td>The calendar exists to produce this click</td></tr>
+        <tr><td><code>Types</code> and <code>Comments</code>, both unused</td>
+          <td><code>Notes</code></td>
+          <td>One internal column, clearly named, never rendered</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>How the script reads it</h2>
+<pre><code>GET https://sheets.googleapis.com/v4/spreadsheets/{SPREADSHEET_ID}/values/{TAB}!A1:Z
+    ?key={API_KEY}</code></pre>
+  <p>The sheet has to be shared as <b class="ink">Anyone with the link → Viewer</b>; an API key
+    cannot open a private sheet. The response is a <code>values</code> array with row 0 as the
+    header — map those names to the columns above and everything downstream is unchanged.</p>
+  <p>A checkbox comes back as the string <code>TRUE</code> or <code>FALSE</code>. A dropdown
+    comes back as its plain label.</p>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">EO Ukraine community calendar · sheet standard v1 · 22 columns ·
+    the parser that consumes it lives in <code>mocks/_normalize.py</code></div>
+</footer>
+<style>
+  /* ---- print sheet ------------------------------------------------------
+     The page is a web reference; on paper it has to survive being read in a
+     different order, so nothing that belongs together may straddle a break. */
+  @page { size: A4; margin: 16mm 14mm 18mm; }
+  html, body { background:#FBFAF8 !important; }
+  .wrap { max-width:100%; padding:0; }
+
+  header { padding:0 0 22px; margin-bottom:30px; break-after:avoid; }
+  h1 { font-size:38px; }
+  .lede { font-size:15.5px; }
+
+  h2 { break-after:avoid; font-size:23px; }
+  section { break-inside:auto; margin-bottom:30px; }
+
+  /* one column = one indivisible block */
+  .field, .rule, .flag, .tblwrap, pre, .cell, .vocab { break-inside:avoid; }
+  .field { margin-bottom:8px; padding:16px 18px; box-shadow:none;
+           border:1px solid rgba(20,19,17,.10); }
+  .rule  { box-shadow:none; border:1px solid rgba(20,19,17,.10); }
+  pre    { box-shadow:none; border:1px solid rgba(20,19,17,.10); }
+  tr     { break-inside:avoid; }
+  thead  { display:table-header-group; }   /* the migration table repeats its header */
+
+  /* the contents strip is navigation; on paper it is just noise */
+  .toc { display:none; }
+
+  body { font-size:14px; line-height:1.55; }
+  .field p, li, .ex div, .v, td, th { font-size:12.5px; }
+  .fwhat { font-size:13.5px; }
+  .fname { font-size:14.5px; }
+  pre code { font-size:11px; }
+  .cell { font-size:11.5px; }
+
+  a { color:#123A63; text-decoration:none; }
+  footer { break-inside:avoid; padding-bottom:0; }
+</style>
+</body></html>

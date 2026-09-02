@@ -1,0 +1,29 @@
+# Cloudflare Pages reads this file from the output directory.
+# serve.mjs applies the same rules locally, so a header problem shows up in dev, not in prod.
+#
+# script-src is strict on purpose: the site renders HTML written in a shared spreadsheet, and
+# `script-src 'self'` is the directive that stops an injected <script> from ever running.
+# There is not one inline script in the codebase, so it costs nothing to keep.
+#
+# style-src allows 'unsafe-inline' for one reason: the description sanitiser parses the sheet's
+# HTML, and merely PARSING a style attribute — which every Word or Google Docs paste carries —
+# raises a CSP report even though src/richtext.js strips the attribute before it reaches the
+# page. Chromium reports it from an inert <template> too, so there is no way around it. Rather
+# than ship a console full of false alarms that hide real errors, the directive is relaxed;
+# injected CSS still never renders, because the sanitiser removes it.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+
+# The calendar is the point of the site and it changes when the sheet changes.
+/data/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Code and stylesheets are versioned by deploy, not by filename, so they cannot be immutable.
+/src/*
+  Cache-Control: public, max-age=300
+/assets/*
+  Cache-Control: public, max-age=300
