@@ -31,20 +31,42 @@ var TIMEZONE_BY_CODE = {
 };
 
 /**
- * WHERE THE EVENTS GO.
+ * WHERE THE EVENTS GO — a Script Property, not a constant in this file.
  *
- *   'primary'  the personal calendar of whoever authorises this script. Nothing to create —
- *              every Google account already has one. Fine to start with.
+ * This file lives in a public repository. A calendar id does not grant access on its own, but
+ * it names a private calendar and there is no reason to publish it. Set it once:
  *
- *   an id      a shared calendar, e.g. 'c_abc123@group.calendar.google.com'. Better for a
- *              chapter: it outlives the person who set it up, and a second admin can be given
- *              "Make changes to events" without handing over an account.
+ *   Project Settings (the gear) -> Script Properties -> Add script property
+ *   Property: CALENDAR_ID
+ *   Value:    c_xxxxxxxx@group.calendar.google.com
  *
- * Whatever this is, GOOGLE_CALENDAR_ID on the website must be set to the SAME calendar, or
- * invitations will look for the events somewhere they are not. Run "Which calendar am I
- * writing to?" from the EO Calendar menu to get the exact id.
+ * Or run setCalendarId() from the EO Calendar menu and paste it in.
+ *
+ * Unset, it falls back to 'primary' — the calendar of whoever authorised the script. A shared
+ * calendar is better for a chapter: several people can be given "Make changes to events", and
+ * it outlives whoever set it up.
+ *
+ * GOOGLE_CALENDAR_ID on the website must be the SAME id, or invitations look for the events on
+ * a calendar they are not on.
  */
-var CALENDAR_ID = 'primary';
+function calendarId_() {
+  return PropertiesService.getScriptProperties().getProperty('CALENDAR_ID') || 'primary';
+}
+
+/** Prompts for the id and stores it, so it never has to be typed into the code. */
+function setCalendarId() {
+  var ui = SpreadsheetApp.getUi();
+  var answer = ui.prompt('Calendar ID',
+    'Paste the id of the calendar the events should live on.\n\n'
+    + 'Google Calendar -> the calendar -> Settings -> Integrate calendar -> Calendar ID.\n'
+    + 'Leave empty to use the calendar of whoever authorised this script.',
+    ui.ButtonSet.OK_CANCEL);
+  if (answer.getSelectedButton() !== ui.Button.OK) return;
+  var id = answer.getResponseText().trim();
+  var props = PropertiesService.getScriptProperties();
+  if (id) props.setProperty('CALENDAR_ID', id); else props.deleteProperty('CALENDAR_ID');
+  whichCalendar();
+}
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -52,6 +74,7 @@ function onOpen() {
     .addItem('Sync now', 'syncNow')
     .addItem('Check published rows', 'checkAll')
     .addItem('Install hourly sync', 'installTrigger')
+    .addItem('Set calendar…', 'setCalendarId')
     .addItem('Which calendar am I writing to?', 'whichCalendar')
     .addToUi();
 }
@@ -71,7 +94,7 @@ function tell_(message) {
  */
 function whichCalendar() {
   var cal = CalendarApp.getCalendarById(
-    CALENDAR_ID === 'primary' ? Session.getEffectiveUser().getEmail() : CALENDAR_ID);
+    calendarId_() === 'primary' ? Session.getEffectiveUser().getEmail() : calendarId_());
   var id = cal ? cal.getId() : '(not found)';
   tell_('Events are being written to:\n\n' + (cal ? cal.getName() : '?') + '\n' + id
     + '\n\nSet GOOGLE_CALENDAR_ID to exactly that id in Cloudflare and in .env.'
@@ -236,7 +259,7 @@ function syncNow() {
         var patch = { summary: title, start: when.start, end: when.end };
         if (existing.status === 'cancelled') { patch.status = 'confirmed'; revived++; }
         try {
-          Calendar.Events.patch(patch, CALENDAR_ID, eventId);
+          Calendar.Events.patch(patch, calendarId_(), eventId);
           if (existing.status !== 'cancelled') updated++;
         } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
         return;
@@ -255,7 +278,7 @@ function syncNow() {
         end: when.end,
         guestsCanSeeOtherGuests: false,
         guestsCanInviteOthers: false
-      }, CALENDAR_ID);
+      }, calendarId_());
       write_(ctx.sheet, ctx.head, col, i, made.id, made.htmlLink);
       created++;
     } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
@@ -271,14 +294,14 @@ function syncNow() {
 /* --------------------------------------------------------------- calendar io */
 
 function fetch_(eventId) {
-  try { return Calendar.Events.get(CALENDAR_ID, eventId); }
+  try { return Calendar.Events.get(calendarId_(), eventId); }
   catch (e) { return null; }                          // 404, or a different calendar
 }
 
 function setStatus_(eventId, status) {
   var existing = fetch_(eventId);
   if (!existing || existing.status === status) return false;
-  try { Calendar.Events.patch({ status: status }, CALENDAR_ID, eventId); return true; }
+  try { Calendar.Events.patch({ status: status }, calendarId_(), eventId); return true; }
   catch (e) { Logger.log('Status change failed: ' + e.message); return false; }
 }
 
@@ -407,7 +430,7 @@ function description_(row, col) {
 
 /** Cancelled rather than deleted: guests are told instead of the event vanishing. */
 function cancel_(eventId) {
-  try { Calendar.Events.patch({ status: 'cancelled' }, CALENDAR_ID, eventId); }
+  try { Calendar.Events.patch({ status: 'cancelled' }, calendarId_(), eventId); }
   catch (e) { log_('Cancel failed: ' + e.message); }
 }
 
