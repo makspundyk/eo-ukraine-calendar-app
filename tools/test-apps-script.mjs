@@ -142,7 +142,7 @@ const D = ['Status','Type','Title','Start Date','End Date','Start Time','End Tim
            'Speaker Title','Registration URL'];
 const dhead = mod.findHeaderRow_([D]);
 const drow = (o) => D.map((h) => o[h] ?? '');
-globalThis.__props = { SITE_URL: 'https://eo.example/' };
+globalThis.__props = { SITE_URL: 'https://eo.example/' };   // trailing slash on purpose
 const body = mod.description_(drow({
   Title: 'Forum Test Drive — September', 'Start Date': '2026-09-16',
   'Start Time': '15:30', 'End Time': '17:00', Timezone: 'CET', Location: 'Online',
@@ -166,6 +166,14 @@ check('links back to the event page',
   body.includes('https://eo.example/#/event/forum-test-drive-september-2026-09-16'),
   body.match(/Full details:.*/)?.[0]);
 check('tells the organiser her edits are safe', body.includes('will not overwrite'));
+// A trailing slash on the property must not produce a double slash in the link.
+check('the address is normalised', !body.includes('eo.example//'), body.match(/Full details:.*/)?.[0]);
+globalThis.__props = {};
+const defaulted = mod.description_(drow({ Title: 'X', 'Start Date': '2026-10-06' }), dhead.map);
+check('with no property set it still links somewhere real',
+  defaulted.includes('https://events.eoukraine.com/#/event/x-2026-10-06'),
+  defaulted.match(/Full details:.*/)?.[0]);
+globalThis.__props = { SITE_URL: 'https://eo.example/' };
 check('carries a way out for anyone invited by subscription',
   body.includes('/#/unsubscribe'), body.slice(-200));
 check('no triple blank lines', !/\n\n\n/.test(body));

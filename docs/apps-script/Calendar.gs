@@ -49,6 +49,16 @@ var TIMEZONE_BY_CODE = {
  * GOOGLE_CALENDAR_ID on the website must be the SAME id, or invitations look for the events on
  * a calendar they are not on.
  */
+/**
+ * Where the calendar is published. Used for the "Full details" and unsubscribe links inside
+ * every invitation. A Script Property overrides it; the default is the live address, so the
+ * links work before anybody thinks to set one.
+ */
+function siteUrl_() {
+  return (PropertiesService.getScriptProperties().getProperty('SITE_URL')
+          || 'https://events.eoukraine.com').replace(/\/+$/, '');
+}
+
 function calendarId_() {
   return PropertiesService.getScriptProperties().getProperty('CALENDAR_ID') || 'primary';
 }
@@ -113,12 +123,12 @@ function setSiteUrl() {
   var ui = SpreadsheetApp.getUi();
   var props = PropertiesService.getScriptProperties();
   var answer = ui.prompt('Website address',
-    'Where the calendar is published, e.g. https://eo-ukraine-calendar-app.pages.dev'
-    + '\n\nCurrently: ' + (props.getProperty('SITE_URL') || '(none)'), ui.ButtonSet.OK_CANCEL);
+    'Where the calendar is published, e.g. https://events.eoukraine.com'
+    + '\n\nCurrently: ' + siteUrl_(), ui.ButtonSet.OK_CANCEL);
   if (answer.getSelectedButton() !== ui.Button.OK) return;
   var v = answer.getResponseText().trim();
   if (v) props.setProperty('SITE_URL', v); else props.deleteProperty('SITE_URL');
-  tell_('Website address: ' + (v || '(none)'));
+  tell_('Website address: ' + siteUrl_());
 }
 
 /** Skips the wait, for when you know you have finished editing. */
@@ -1002,7 +1012,7 @@ function addMinutes_(t, mins) {
  */
 function description_(row, col) {
   var out = [];
-  var site = PropertiesService.getScriptProperties().getProperty('SITE_URL') || '';
+  var site = siteUrl_();
 
   var summary = String(get_(row, col, 'summary') || '').trim();
   if (summary) out.push(summary, '');
@@ -1036,14 +1046,13 @@ function description_(row, col) {
   if (site) {
     var slug = slugify_(String(get_(row, col, 'title') || ''));
     var start = iso_(get_(row, col, 'start_date'));
-    out.push('Full details: ' + site.replace(/\/+$/, '') + '/#/event/'
-      + slug + (start ? '-' + start : ''), '');
+    out.push('Full details: ' + site + '/#/event/' + slug + (start ? '-' + start : ''), '');
   }
 
   if (site) {
     out.push('—');
     out.push('Invited because you subscribed to EO Ukraine events? Stop receiving them: '
-      + site.replace(/\/+$/, '') + '/#/unsubscribe');
+      + site + '/#/unsubscribe');
   }
   out.push('—', 'Created from the EO events sheet. Edit this freely: the sync only ever '
     + 'corrects the title and the times, and will not overwrite what you write here.');

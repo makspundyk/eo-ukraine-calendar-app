@@ -198,6 +198,8 @@ first rather than in production.
 must stay at the repository root: anything inside `public/` is published as a static file, so a
 Function placed there would be served as readable source and would never run.
 
+Published at **<https://events.eoukraine.com>**.
+
 ### Cloudflare setup
 
 Pages → Settings → Variables and secrets, for Production and Preview:

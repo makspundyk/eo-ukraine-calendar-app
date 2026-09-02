@@ -218,8 +218,9 @@ them can show the description with none of the chrome around it.
 **Plain text, not HTML.** Calendar clients render description markup inconsistently, and the
 organiser edits this by hand afterwards; markup she did not write would be in her way.
 
-Set the "Full details" address once: **EO Calendar → Set website address…**. Leave it unset and
-that line is omitted.
+The "Full details" and unsubscribe links point at **<https://events.eoukraine.com>** by
+default, so they work with nothing configured. **EO Calendar → Set website address…** overrides
+it if the site ever moves; a trailing slash is fine either way.
 
 Written **once, at creation**. Every later sync corrects only the title and the times, so
 anything the organiser adds here survives.
