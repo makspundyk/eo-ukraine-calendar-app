@@ -318,6 +318,23 @@ and re-invites the same people.
 
 **Never type in `Calendar Event ID`.** It is the only link between the row and the real event.
 
+#### An event that already exists in Google Calendar
+
+Somebody made it by hand, or the id was cleared. **EO Calendar → Link rows to existing calendar
+events** finds it and fills the columns in.
+
+It matches on **title and date**, and links only when exactly one event matches. Two events
+with the same title on the same day are reported rather than guessed at — linking the wrong one
+would send the next round of invitations to the wrong guests. Punctuation, spacing, case and
+the difference between a hyphen and an em dash are all ignored; a missing word is not.
+
+It reads the guest list in at the same time, so `Attendees` and `Attendees Emails` are filled
+from whoever is already on the event.
+
+For the rare row that has to be linked by hand, **EO Calendar → List calendar events and their
+ids** prints the next year of events with their ids. Do not try to read the id out of a
+Calendar URL: the `eid` parameter is base64 of `<eventId> <calendarId>`, not the id itself.
+
 #### Which calendar should the events live on?
 
 `CALENDAR_ID` at the top of the script decides, and it must match `GOOGLE_CALENDAR_ID` on the

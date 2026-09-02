@@ -163,6 +163,8 @@ function onOpen() {
     .addItem('Sync now', 'syncNow')
     .addItem('Check published rows', 'checkAll')
     .addItem('Refresh attendees now', 'refreshAttendees')
+    .addItem('Link rows to existing calendar events', 'linkExistingEvents')
+    .addItem('List calendar events and their ids', 'listCalendarEvents')
     .addSeparator()
     .addItem('Set up subscriptions', 'setUpSubscriptions')
     .addItem('Install hourly sync', 'installTrigger')
@@ -563,6 +565,99 @@ function flushPending() {
   });
   savePending_(map);
   if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
+}
+
+/* ------------------------------------------------- adopting existing events */
+
+/**
+ * Finds events already on the calendar and writes their ids into the sheet.
+ *
+ * For a row that somebody created by hand in Google Calendar, or one whose id was cleared.
+ * Without this the only way to get an id is out of the `eid` parameter in a Calendar URL,
+ * which is base64 of "<eventId> <calendarId>" and not something anybody should be decoding.
+ *
+ * It matches on TITLE and DATE, and only links when exactly one event matches. Two events with
+ * the same title on the same day are reported rather than guessed at: linking the wrong one
+ * would send the next round of invitations to the wrong guests.
+ */
+function linkExistingEvents() {
+  var ctx = open_();
+  if (!ctx) return;
+  ensureColumns_(ctx.sheet, ctx.head, ['Calendar Event ID', 'Calendar Link']);
+  ctx = open_();
+
+  var linked = 0, lines = [];
+  eachRow_(ctx, function (row, i) {
+    if (String(get_(row, ctx.map, 'calendar_event_id') || '').trim()) return;
+    var start = iso_(get_(row, ctx.map, 'start_date'));
+    if (!start) return;
+    var title = String(get_(row, ctx.map, 'title') || '').trim();
+
+    var matches = findByTitleAndDate_(title, start,
+      iso_(get_(row, ctx.map, 'end_date')) || start);
+
+    if (matches.length === 1) {
+      write_(ctx.sheet, ctx.head, ctx.map, i, matches[0].id, matches[0].htmlLink);
+      writeAttendees_(ctx, i, matches[0]);
+      linked++;
+    } else if (matches.length > 1) {
+      lines.push('Row ' + (i + 1) + ': "' + title + '" matches ' + matches.length
+        + ' events on that day — link it by hand, or rename one');
+    }
+  });
+
+  tell_(linked + ' row(s) linked to an event already on the calendar.'
+    + (lines.length ? '\n\n' + lines.join('\n') : '')
+    + (linked ? '\n\nTheir guest lists were read in as well.' : ''));
+}
+
+/** Events on the calendar whose title matches, within the row's own dates. */
+function findByTitleAndDate_(title, startIso, endIso) {
+  var wanted = normaliseTitle_(title);
+  var from = new Date(startIso + 'T00:00:00Z');
+  var to = new Date(endIso + 'T00:00:00Z');
+  to.setUTCDate(to.getUTCDate() + 1);
+
+  var found = [];
+  try {
+    var res = Calendar.Events.list(calendarId_(), {
+      timeMin: from.toISOString(), timeMax: to.toISOString(),
+      singleEvents: true, maxResults: 250, showDeleted: false
+    });
+    (res.items || []).forEach(function (e) {
+      if (e.status !== 'cancelled' && normaliseTitle_(e.summary) === wanted) found.push(e);
+    });
+  } catch (err) {
+    Logger.log('Search failed for "' + title + '": ' + err.message);
+  }
+  return found;
+}
+
+/** Punctuation and spacing differ between a sheet and a calendar; the words do not. */
+function normaliseTitle_(v) {
+  return String(v || '').toLowerCase()
+    .replace(/[\u2010-\u2015]/g, '-')               // en and em dashes
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Prints what is on the calendar, with ids, for the rare row that has to be linked by hand. */
+function listCalendarEvents() {
+  var now = new Date();
+  var year = new Date(now.getTime() + 365 * 86400000);
+  var lines = [];
+  try {
+    var res = Calendar.Events.list(calendarId_(), {
+      timeMin: now.toISOString(), timeMax: year.toISOString(),
+      singleEvents: true, orderBy: 'startTime', maxResults: 60
+    });
+    (res.items || []).forEach(function (e) {
+      lines.push(((e.start.date || e.start.dateTime || '').slice(0, 10)) + '  ' + e.summary
+        + '\n    ' + e.id);
+    });
+  } catch (err) { lines.push('Could not read the calendar: ' + err.message); }
+  tell_(lines.length ? lines.join('\n') : 'Nothing on the calendar in the next year.');
+  Logger.log(lines.join('\n'));
 }
 
 /* -------------------------------------------------------------- subscriptions */

@@ -22,7 +22,7 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
   + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_, isPast_, '
-  + 'today_, isCancelled_ };'));
+  + 'today_, isCancelled_, normaliseTitle_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -112,6 +112,22 @@ check('a run that ended yesterday is past',
 check('no date at all is not past — "to be confirmed" is a future state',
   !past({ 'Start Date': '' }));
 check('an unreadable date is not treated as past', !past({ 'Start Date': 'next tuesday' }));
+
+console.log('\nmatching a sheet row to an event already on the calendar');
+const N = mod.normaliseTitle_;
+check('an em dash in one and a hyphen in the other still match',
+  N('Forum Test Drive — September') === N('Forum Test Drive - September'));
+check('case and extra spaces do not matter',
+  N('  EO  UNLIMITED  2026 ') === N('EO Unlimited 2026'));
+check('punctuation does not matter',
+  N('Legal & Tax: Risks') === N('Legal & Tax Risks'),
+  `${N('Legal & Tax: Risks')} vs ${N('Legal & Tax Risks')}`);
+// "and" is a word, not punctuation, so it is NOT treated as the same title.
+check('a word that is not there is still a difference',
+  N('Legal & Tax Risks') !== N('Legal and Tax Risks'));
+check('genuinely different titles do not match',
+  N('Chapter Retreat') !== N('Chapter Meeting'));
+check('an empty title does not match everything', N('') === '' && N('') !== N('x'));
 
 console.log('\nthe recovery column');
 const guests = [
