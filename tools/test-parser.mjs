@@ -6,6 +6,7 @@
  * they are asserted rather than eyeballed.
  */
 import { normalizeRows, stripInternal } from '../lib/normalize.mjs';
+import { getCalendar } from '../lib/calendar.mjs';
 
 let failed = 0;
 const check = (name, cond, detail = '') => {
@@ -90,6 +91,34 @@ const shuffled = [HEADER.slice().reverse(),
 const re = normalizeRows(shuffled).events;
 check('a fully reversed column order still parses',
   re.length === 1 && re[0].title === 'Reordered' && re[0].start === '2026-12-01');
+
+// DEMO=1 has to hold even with perfect credentials, so the trip-wire counts outbound calls.
+console.log('\nDEMO switch');
+const realFetch = globalThis.fetch;
+let calls = 0;
+globalThis.fetch = (...a) => { calls++; return realFetch(...a); };
+const creds = { GOOGLE_SERVICE_ACCOUNT_EMAIL: 'x@y.iam.gserviceaccount.com',
+                GOOGLE_PRIVATE_KEY: 'irrelevant', GOOGLE_SPREADSHEET_ID: 'irrelevant' };
+
+let r = await getCalendar({ DEMO: '1', ...creds });
+check('DEMO=1 returns the demo calendar even with credentials set',
+  r.body.source === 'mock' && r.body.reason === 'demo', JSON.stringify(r.body));
+check('DEMO=1 contacts Google zero times', calls === 0, `${calls} requests`);
+
+calls = 0;
+r = await getCalendar({ DEMO: '1' });
+check('DEMO=1 works with no credentials at all', r.body.reason === 'demo');
+check('...still zero requests', calls === 0, `${calls} requests`);
+
+calls = 0;
+r = await getCalendar({ DEMO: '0' });
+check('DEMO=0 with nothing configured falls back, naming the reason',
+  r.body.source === 'mock' && r.body.reason === 'missing_config', JSON.stringify(r.body));
+
+r = await getCalendar({});
+check('DEMO unset defaults to live, not demo', r.body.reason === 'missing_config');
+check('no reason leaks a credential', !/gserviceaccount|PRIVATE KEY/.test(JSON.stringify(r.body)));
+globalThis.fetch = realFetch;
 
 console.log(failed ? `\n${failed} FAILED\n` : `\nall checks passed\n`);
 process.exit(failed ? 1 : 0);

@@ -36,13 +36,21 @@ const shell = (route) => `
  * would reasonably conclude the site is fine, and the broken sheet would go unnoticed for
  * weeks. It names the reason, because "something went wrong" is not actionable.
  */
-const demoNotice = () => (source.kind !== 'mock' ? '' : `
-  <div class="banner" role="status">
+const demoNotice = () => {
+  if (source.kind !== 'mock') return '';
+  // Demo mode is somebody's decision; a failed read is not. Saying the same thing for both
+  // would hide a broken sheet behind a message that looks intentional.
+  const chosen = source.reason === 'demo';
+  return `
+  <div class="banner${chosen ? ' quiet' : ''}" role="status">
     <div class="wrap">
-      <b>Showing demo events.</b>
-      <span>${e(source.message || 'The live calendar could not be read from the sheet.')}</span>
+      <b>${chosen ? 'Demo calendar.' : 'Showing demo events.'}</b>
+      <span>${e(chosen
+        ? 'These are sample events, not the live chapter calendar.'
+        : source.message || 'The live calendar could not be read from the sheet.')}</span>
     </div>
-  </div>`);
+  </div>`;
+};
 
 const skeleton = `<div class="empty"><b>Loading the calendar…</b></div>`;
 

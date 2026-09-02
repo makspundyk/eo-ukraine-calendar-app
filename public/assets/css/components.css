@@ -318,3 +318,6 @@
 .banner .wrap{display:flex;gap:var(--sp-3);align-items:baseline;flex-wrap:wrap;
   padding-top:10px;padding-bottom:10px;font-size:13.5px;color:var(--ink-2)}
 .banner b{color:var(--warn,#8A4B10);font-weight:600}
+/* Demo mode was chosen, so the banner stays neutral rather than warning-coloured. */
+.banner.quiet{background:var(--surface-2);border-bottom:1px solid var(--rule-2)}
+.banner.quiet b{color:var(--ink)}

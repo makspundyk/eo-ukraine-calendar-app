@@ -111,6 +111,8 @@ createServer(async (req, res) => {
   const c = readConfig(ENV);
   const ready = c.email && c.privateKey && c.spreadsheetId;
   console.log(`\n  EO events  ->  http://localhost:${PORT}`);
-  console.log(`  CLOUDFLARE_ON=${c.cloudflare ? 1 : 0}  ·  live sheet: ${
-    ready ? `configured (${c.range})` : 'not configured — the demo data will be used'}\n`);
+  console.log(`  DEMO=${c.demo ? 1 : 0}  CLOUDFLARE_ON=${c.cloudflare ? 1 : 0}  ·  ${
+    c.demo ? 'demo calendar, Google not contacted'
+           : ready ? `live sheet: ${c.range}`
+                   : 'live sheet not configured — the demo data will be used'}\n`);
 });

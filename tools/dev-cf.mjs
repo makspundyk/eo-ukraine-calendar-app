@@ -37,7 +37,7 @@ if (env.GOOGLE_APPLICATION_CREDENTIALS && !env.GOOGLE_PRIVATE_KEY) {
   env.GOOGLE_PRIVATE_KEY = json.private_key;
 }
 
-const PASS = ['CLOUDFLARE_ON', 'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY',
+const PASS = ['DEMO', 'CLOUDFLARE_ON', 'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY',
               'GOOGLE_SPREADSHEET_ID', 'GOOGLE_SHEET_RANGE'];
 // A shell variable beats the file, matching serve.mjs.
 for (const k of PASS) if (process.env[k]) env[k] = process.env[k];

@@ -46,11 +46,21 @@ Same names in both places. **Nothing here is ever read by browser code.**
 
 | Name | Cloudflare | Local |
 |---|---|---|
+| `DEMO` | `0` | `0` |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | secret | `.env` |
 | `GOOGLE_PRIVATE_KEY` | secret | `.env` |
 | `GOOGLE_SPREADSHEET_ID` | secret | `.env` |
 | `CLOUDFLARE_ON` | `1` | `0` |
 | `GOOGLE_SHEET_RANGE` | optional | optional |
+
+**`DEMO=1` pins the site to the demo calendar** and short-circuits Google entirely — no key is
+read, no token requested, nothing leaves the server. It works on a machine with no credentials
+at all, which makes it the right switch for a demo, a rehearsal, or while the sheet is being
+restructured. The banner then reads *"Demo calendar"* in neutral grey rather than the amber
+*"Showing demo events"* used for a failure, so a deliberate choice never looks like a fault.
+
+`DEMO=0`, or unset, reads the live sheet — and still falls back to the demo calendar if the
+sheet cannot be read.
 
 `CLOUDFLARE_ON` is **configuration, not a security boundary**. It is read server-side for the
 startup log only; the secrets are server-side either way, and no browser code depends on it.
