@@ -19,7 +19,8 @@ const check = (name, cond, detail = '') => {
 const HEADER = ['Status','Type','Title','Start Date','End Date','Start Time','End Time',
   'Timezone','Date Note','Location','Venue','Summary','Description','Highlights','Who For',
   'Speaker Name','Speaker Title','Speaker Bio','Guests Welcome','Registration URL',
-  'Image URL','Image Credit','Event Owner','Notes','Attendees','Meeting Link'];
+  'Image URL','Image Credit','Event Owner','Notes','Attendees','Meeting Link',
+  'Interested Emails'];
 
 // Status defaults to Published here so each case tests what it says it tests; the opt-in
 // rule itself has its own section below.
@@ -34,7 +35,8 @@ const grid = [
         Highlights:'One\nTwo\nThree', 'Guests Welcome':true,
         'Registration URL':'https://example.org/a', 'Event Owner':'Anna', Notes:'venue unpaid',
         Attendees:'Zoe Adams <zoe@private.example> · yes',
-        'Meeting Link':'https://meet.google.com/private-room-abc' }),
+        'Meeting Link':'https://meet.google.com/private-room-abc',
+        'Interested Emails':'keen@private.example, alsokeen@private.example' }),
   row({ Type:'Global / Regional', Title:'ELC 2026', 'Start Date':'2026-10-06',
         'End Date':'2026-10-08', Location:'Krakow, Poland',
         'Registration URL':'https://example.org/b' }),
@@ -114,6 +116,13 @@ check('no `attendees` key', !/"attendees"/.test(published));
 // A joining link on a public page would let anyone walk into the meeting.
 check('the meeting link is absent', !published.includes('meet.google.com'));
 check('no `meeting_link` key', !/"meeting_link"/.test(published));
+// Written by /api/interest. Personal addresses, and the whole point is that the list is the
+// chapter's rather than the internet's.
+check('the interest list is absent', !published.includes('keen@private.example'));
+check('no `interested_emails` key', !/"interested/.test(published));
+// The row number is server-side plumbing (/api/interest writes by it) and says more about the
+// shape of the sheet than a browser has any use for.
+check('no `source_row` key', !/"source_row"/.test(published));
 
 console.log('\ndegrading rather than crashing');
 check('a sheet with no header row throws a named reason', (() => {

@@ -555,3 +555,9 @@
   .me{padding:0 10px}
   .me-pop{width:min(290px,calc(100vw - 32px))}
 }
+
+/* The quiet second action inside the invitation form: same address, different outcome. It has
+   to read as a real choice and plainly not the main one — a second filled button beside
+   "Send me the invitation" would make the two look interchangeable, which they are not. */
+.attend-alt{grid-column:1/-1;justify-self:start;text-align:left}
+.attend.interest .register{white-space:nowrap}

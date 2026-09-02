@@ -177,6 +177,33 @@ no later change by the organiser could ever reach, and which never told the orga
 was coming. That path still exists, for events the sheet has not yet created a calendar event
 for, and only for those.
 
+## Register interest
+
+The lighter half of an invitation, and deliberately a different thing.
+
+| | |
+|---|---|
+| `/api/attend` | puts the member **on** the organiser's calendar event. Google emails the invitation, it appears in their calendar, and every later change reaches them |
+| `/api/interest` | writes their address into the event row's `Interested Emails` cell and does nothing else. No calendar entry, no email, no guest list |
+
+It exists because an event with no date has no calendar event to be a guest of, so those rows
+offered a member nothing at all to press — and because wanting to be counted is not the same
+as wanting a diary entry.
+
+Where it appears: on a card or a table row when the event has **no date**; on the event page
+as a quiet second button under the invitation form, and as the whole action on an event that
+cannot be joined yet.
+
+`Interested Emails` is written by the site and by nobody else. The Apps Script owns the
+columns it fills FROM the calendar — `Attendees Emails`, `Attendees` — and nothing in a
+calendar event corresponds to this one, so the two never collide; they merely agree on the
+name, so whichever runs first creates it. The column is listed as internal in
+`lib/normalize.mjs`, so it is stripped on the way to the browser exactly as the guest list is.
+
+The write is read-modify-write on a single cell. Two people pressing in the same second could
+cost one of them their place in it; at a chapter's traffic that is a theoretical loss, and the
+alternative is a database this project deliberately does not have.
+
 ## The demo data path
 
 The calendar reads `mocks/events.json`. That file is generated:

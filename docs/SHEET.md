@@ -49,6 +49,27 @@ If the chapter uses calendar invitations, the script adds `Calendar Event ID` an
 `Calendar Link` itself and keeps them filled. **Do not type in them.** See
 [`CALENDAR-INVITATIONS.md`](CALENDAR-INVITATIONS.md).
 
+### One column the WEBSITE writes: `Interested Emails`
+
+When somebody presses **Register interest** on the site, their address is added to this cell,
+on that event's own row. Nothing else happens: no calendar entry, no email, no guest list.
+
+It is the only thing an event with no date can offer — there is no event to be a guest of yet
+— and it is the honest answer for anyone who wants to be counted without a diary entry. Read
+it, sort it, mail it; the column is yours. Adding an address by hand works exactly as well as
+pressing the button.
+
+**It is never published.** The parser lists it as internal, so it is stripped on the way to
+the browser exactly as the guest list is. Nothing on the site ever shows who else is coming.
+
+`Interested Emails` is not `Attendees Emails`. The Apps Script fills *that* one FROM the
+calendar's guest list and will overwrite it; nothing in a calendar event corresponds to this
+column, so nothing ever overwrites it.
+
+The script creates the column on its next sync, and the site creates it the first time
+somebody presses the button — whichever happens first. Both use the same name, so there is
+only ever one.
+
 ### One more optional column: `Calendar Link`
 
 Paste the URL of the organiser's own Google Calendar event and the event page shows

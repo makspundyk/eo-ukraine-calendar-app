@@ -15,6 +15,7 @@ import { extname, join, normalize, resolve, dirname } from 'node:path';
 import { getCalendar, readConfig, resolveCalendarEventId } from './lib/calendar.mjs';
 import { addAttendee } from './lib/attend.mjs';
 import { subscribe, unsubscribe } from './lib/subscriptions.mjs';
+import { registerInterest } from './lib/interest.mjs';
 import { getFeed } from './lib/ics-feed.mjs';
 
 const HERE = dirname(new URL(import.meta.url).pathname);
@@ -146,6 +147,23 @@ createServer(async (req, res) => {
     }
     res.writeHead(out.status, { ...HEADERS, 'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store' });
+    return res.end(JSON.stringify(out.body, null, 2));
+  }
+
+  if (p === '/api/interest' && req.method === 'POST') {
+    const input = await readBody();
+    const out = await registerInterest(ENV, { event: String(input.event ?? ''),
+                                              email: input.email });
+    console.log(`  ${out.logLine}`);
+    if (out.body.ok && input.subscribe) {
+      try {
+        const sub = await subscribe(ENV, { email: input.email });
+        if (sub.ok) out.body.subscribed = true;
+        if (sub.ok && sub.token) out.body.unsubscribe = `/#/unsubscribe/${sub.token}`;
+        else if (!sub.ok) console.log(`  interest: subscribe declined [${sub.reason}]`);
+      } catch (err) { console.log(`  interest: subscribe failed [${err.reason}]`); }
+    }
+    res.writeHead(out.status, { ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify(out.body, null, 2));
   }
 

@@ -26,5 +26,12 @@ const post = async (url, payload) => {
  */
 export const requestInvitation = (input) => post('/api/attend', input);
 
+/**
+ * Record that somebody is interested in ONE event. No calendar entry, no email, no guest
+ * list — the address goes into that row's `Interested Emails` cell and nowhere else.
+ * @param {{event:string, email:string, subscribe?:boolean}} input
+ */
+export const requestInterest = (input) => post('/api/interest', input);
+
 /** Join the chapter's list. @param {{email:string, name?:string}} input */
 export const requestSubscription = (input) => post('/api/subscribe', input);

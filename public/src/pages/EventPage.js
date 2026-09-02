@@ -24,7 +24,7 @@ import {
 } from '../format.js';
 import { displayWhen } from '../timezone.js';
 import { savedEmail, maybeAsk } from '../identity.js';
-import { requestInvitation } from '../api/attend.js';
+import { requestInvitation, requestInterest } from '../api/attend.js';
 
 export const meta = {
   id: 'V3', name: 'Event', route: '#/event/:id', vue: 'pages/events/[id].vue',
@@ -43,7 +43,7 @@ const api = useEventsApi();
 export async function load(route) {
   // `?invite=1` is how a card with no remembered address hands over: it has no room to ask
   // for one, so it sends the reader here, to the field and the sentence explaining it.
-  const wants = Boolean(route.query.invite);
+  const wants = Boolean(route.query.invite || route.query.interest);
   const known = await api.known(route.params.id);
   if (known && known.description === undefined) return { ev: known, partial: true, wants };
   const ev = known?.description !== undefined ? known : await api.byId(route.params.id);
@@ -56,6 +56,7 @@ export async function load(route) {
 export async function mount({ ev, partial, wants }, { rerender } = {}) {
   wireDownload(ev);
   wireAttend();
+  wireInterest();
   if (wants) focusInvite();
   if (!partial || !rerender) return;
   const full = await api.byId(ev.id);
@@ -68,7 +69,7 @@ export async function mount({ ev, partial, wants }, { rerender } = {}) {
  * on a bare input with the title off screen is how people register for the wrong evening.
  */
 function focusInvite() {
-  const input = document.querySelector('.attend input[type=email]');
+  const input = document.querySelector('form.attend input[type=email]');
   if (!input) return;
   input.closest('.pcard')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   if (!input.value) input.focus({ preventScroll: true });
@@ -240,31 +241,89 @@ export function wireAttend() {
     button.textContent = 'Sending…';
     try {
       const body = await requestInvitation({ event: form.dataset.attend, email, subscribe });
-      note.className = `${note.classList.contains('micro') ? 'micro' : 'addcal-note'} ${
-        body.ok ? 'good' : 'bad'}`;
       // The link is offered on success because the email is not guaranteed: a personal Gmail
       // account may not auto-add an invitation from a shared calendar, and it can land in
       // spam. Saying "sent" and stopping there leaves somebody staring at an empty calendar.
-      note.innerHTML = body.ok
+      setNote(note, body.ok, body.ok
         ? [esc(body.message),
            body.link ? `<a href="${esc(body.link)}" target="_blank" rel="noopener">`
                        + 'Open it in Google Calendar</a> if it does not appear.' : '',
            body.subscribed ? 'You are also on the list for future events'
              + (body.unsubscribe ? ` — <a href="${esc(body.unsubscribe)}">leave it</a>` : '')
              + '.' : ''].filter(Boolean).join(' ')
-        : esc(body.message || 'That did not work. Try again in a moment.');
+        : esc(body.message || 'That did not work. Try again in a moment.'));
       if (body.ok) {
         form.remove();
         if (await maybeAsk(email)) rememberedNote(note);
       }
     } catch {
-      note.textContent = 'That did not work. Try again in a moment.';
-      note.className = `${note.classList.contains('micro') ? 'micro' : 'addcal-note'} bad`;
+      setNote(note, false, 'That did not work. Try again in a moment.');
     } finally {
       button.disabled = false;
       button.textContent = previous;
     }
   });
+}
+
+/**
+ * Register interest, from either place it is offered: its own form on an event that cannot be
+ * joined, or the quiet second button under the invitation form.
+ *
+ * The two share one handler because they are one action with two entry points, and the only
+ * difference is which field holds the address.
+ */
+export function wireInterest() {
+  const own = document.querySelector('[data-interest-form]');
+  const alt = document.querySelector('[data-interest-alt]');
+
+  const send = async (id, form, button, note) => {
+    const email = form.querySelector('input[type=email]').value.trim();
+    if (!email) {                       // the alt button bypasses the form's own validation
+      form.querySelector('input[type=email]').reportValidity();
+      return;
+    }
+    button.disabled = true;
+    const previous = button.innerHTML;
+    button.textContent = 'One moment…';
+    const body = await requestInterest({ event: id, email,
+      subscribe: form.querySelector('[name=subscribe]')?.checked });
+
+    setNote(note, body.ok, body.ok
+      ? [esc(body.message),
+         body.subscribed ? 'You are also on the list for future events'
+           + (body.unsubscribe ? ` — <a href="${esc(body.unsubscribe)}">leave it</a>` : '')
+           + '.' : ''].filter(Boolean).join(' ')
+      : esc(body.message || 'That did not work. Try again in a moment.'));
+
+    if (body.ok) {
+      form.remove();
+      if (await maybeAsk(email)) rememberedNote(note);
+    } else {
+      button.disabled = false;
+      button.innerHTML = previous;
+    }
+  };
+
+  own?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    send(own.dataset.interestForm, own, own.querySelector('button[type=submit]'),
+         document.querySelector('[data-interest-note]'));
+  });
+
+  // Inside the invitation form: same address, different action. It must not submit the form,
+  // which is why it is a plain button and not a second submit.
+  alt?.addEventListener('click', () => {
+    const form = alt.closest('form');
+    send(alt.dataset.interestAlt, form, alt, document.querySelector('[data-attend-note]'));
+  });
+}
+
+/** The note keeps whichever class it was rendered with; only the verdict changes. */
+function setNote(note, ok, html) {
+  if (!note) return;
+  const base = note.classList.contains('micro') ? 'micro' : 'addcal-note';
+  note.className = `${base} ${ok ? 'good' : 'bad'}`;
+  note.innerHTML = html;
 }
 
 /**
@@ -316,19 +375,23 @@ function primaryAction(ev) {
         ? 'We will email you as soon as the date is set.'
         : 'Opens the EO registration page. Takes about a minute.'}</p>`;
   }
+  // No date yet, so there is nothing to register for and nothing to put in a calendar. What
+  // is still true is that somebody wants to come, and that is worth recording.
   if (!ev.start) {
-    return `<p class="micro">Registration opens when the date is set.</p>`;
+    return interestForm(ev, 'The date is not set yet. Leave your address and the organiser '
+      + 'will tell you as soon as it is — nothing goes in your calendar and no invitation is '
+      + 'sent until there is something to be invited to.');
   }
   if (ev.invitable) {
     return `
       <form class="attend wide" data-attend="${e(ev.id)}">
-        <input type="email" name="email" required autocomplete="email"
-               value="${e(savedEmail())}"
-               placeholder="your@email.com" aria-label="Your email address" />
+        ${emailField()}
         <button type="submit" class="register">Send me the invitation
           <span class="arr" aria-hidden="true">→</span></button>
         <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
           Invite me to future events too</label>
+        <button type="button" class="ask-no attend-alt" data-interest-alt="${e(ev.id)}">
+          Not sure yet — just tell the organiser I am interested</button>
       </form>
       <p class="micro" data-attend-note>The organiser's own event, so the room and any later
         change reach you automatically. Untick the box and your address is used for this
@@ -340,8 +403,33 @@ function primaryAction(ev) {
        target="_blank" rel="noopener">Add to Google Calendar
        <span class="arr" aria-hidden="true">→</span></a>
     <p class="micro">Or <a href="#" data-ics="${e(ev.id)}">download the .ics file</a> for Apple
-      Calendar, Outlook and everything else.</p>`;
+      Calendar, Outlook and everything else.</p>
+    ${interestForm(ev, 'This one has no registration page yet. Leave your address and the '
+      + 'organiser will come back to you — nothing goes in your calendar and no invitation is '
+      + 'sent.')}`;
 }
+
+const emailField = () => `
+  <input type="email" name="email" required autocomplete="email"
+         value="${e(savedEmail())}"
+         placeholder="your@email.com" aria-label="Your email address" />`;
+
+/**
+ * Register interest — a note to the organiser, and nothing else.
+ *
+ * Deliberately NOT an invitation: no calendar entry, no email, no guest list. It is the only
+ * thing that is still true of an event whose date has not been set, and it is the honest
+ * answer for somebody who wants to be counted without a diary entry. See lib/interest.mjs.
+ */
+const interestForm = (ev, note) => `
+  <form class="attend wide interest" data-interest-form="${e(ev.id)}">
+    ${emailField()}
+    <button type="submit" class="register">Register interest
+      <span class="arr" aria-hidden="true">→</span></button>
+    <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
+      Tell me about other events too</label>
+  </form>
+  <p class="micro" data-interest-note>${e(note)}</p>`;
 
 export function render({ ev, partial }) {
   const cta = primaryAction(ev);

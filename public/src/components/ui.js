@@ -38,17 +38,22 @@ export const action = (ev, opts = {}) => {
   // is worse than offering nothing: it says the site does not know what day it is.
   if (hasPassed(ev)) return '';
   if (ev.registration_url) return register(ev.registration_url, opts);
-  if (!ev.start) return '';
 
-  if (ev.invitable) {
-    const cls = `register ${opts.small ? 'sm' : ''} ${opts.ghost ? 'ghost' : ''}`;
-    return savedEmail() ? inviteButton(ev.id, cls) : inviteAsk(ev.id, cls);
-  }
+  const cls = `register ${opts.small ? 'sm' : ''} ${opts.ghost ? 'ghost' : ''}`;
+
+  if (ev.invitable) return savedEmail() ? inviteButton(ev.id, cls) : inviteAsk(ev.id, cls);
+
+  // No date, so there is nothing to put in a calendar and no event to be a guest of. Until
+  // now these rows offered a member nothing at all to press; interest is the one thing that
+  // is still true of an event whose date has not been set.
+  if (!ev.start) return savedEmail() ? interestButton(ev.id, cls) : interestAsk(ev.id, cls);
+
   return register(googleUrl(ev, { origin: location.origin }),
     { ...opts, label: 'Add to calendar' });
 };
 
 const ADD = 'Add to calendar <span class="arr" aria-hidden="true">→</span>';
+const SAY = 'Register interest <span class="arr" aria-hidden="true">→</span>';
 
 /**
  * One press: the remembered address goes onto the organiser's event.
@@ -69,6 +74,16 @@ export const inviteButton = (id, cls) =>
  */
 export const inviteAsk = (id, cls) =>
   `<a class="${e(cls)}" href="#/event/${e(id)}?invite=1" data-invite-ask="${e(id)}">${ADD}</a>`;
+
+/**
+ * The same pair for interest: a note to the organiser and nothing else — no calendar entry,
+ * no email, no guest list. See lib/interest.mjs.
+ */
+export const interestButton = (id, cls) =>
+  `<button type="button" class="${e(cls)}" data-interest="${e(id)}">${SAY}</button>`;
+
+export const interestAsk = (id, cls) =>
+  `<a class="${e(cls)}" href="#/event/${e(id)}?interest=1" data-interest-ask="${e(id)}">${SAY}</a>`;
 
 /**
  * `internal` is a hash link within the site: no new tab, and no rel — opening our own event

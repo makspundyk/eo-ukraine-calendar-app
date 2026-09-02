@@ -11,8 +11,8 @@ import { escape as e } from './format.js';
 import { source } from './api/http.js';
 import { showingLocal, toggleMode, zoneLabel, browserZone } from './timezone.js';
 import { identityBar, wireIdentity, savedEmail } from './identity.js';
-import { requestInvitation } from './api/attend.js';
-import { inviteButton, inviteAsk } from './components/ui.js';
+import { requestInvitation, requestInterest } from './api/attend.js';
+import { inviteButton, inviteAsk, interestButton, interestAsk } from './components/ui.js';
 import { toast } from './components/toast.js';
 
 export const PAGES = { feed: FeedPage, list: ListPage, event: EventPage,
@@ -147,6 +147,12 @@ document.addEventListener('eo:identity', () => {
   for (const b of document.querySelectorAll('button[data-invite]')) {
     if (!email) b.replaceWith(fragment(inviteAsk(b.dataset.invite, b.className)));
   }
+  for (const a of document.querySelectorAll('[data-interest-ask]')) {
+    if (email) a.replaceWith(fragment(interestButton(a.dataset.interestAsk, a.className)));
+  }
+  for (const b of document.querySelectorAll('button[data-interest]')) {
+    if (!email) b.replaceWith(fragment(interestAsk(b.dataset.interest, b.className)));
+  }
 
   // An EMPTY field only. Somebody who has typed a different address into the form in front of
   // them means it, and having it overwritten from the top bar would be maddening.
@@ -163,28 +169,48 @@ function fragment(html) {
 }
 
 /**
- * One press on a card: the remembered address goes straight onto the organiser's event.
+ * One press on a card, for both of the things a card can do with a remembered address:
+ *
+ *   data-invite     put the member ON the organiser's calendar event — Google emails them
+ *                   the invitation and every later change reaches them
+ *   data-interest   record that they want to come, and nothing else. The only thing that is
+ *                   still true of an event with no date and therefore no calendar event
  *
  * Delegated, because the feed appends cards as it is scrolled and the event page redraws
- * itself when the description arrives — a listener bound to a button would not survive either.
+ * itself when the description arrives — a listener bound to a button would survive neither.
  *
  * The answer comes back as a toast. A card has no room for a paragraph, and growing one to
- * hold the confirmation would push every card below it down the page as the reader is reading.
+ * hold the confirmation would push every card below it down the page as it is being read.
  */
+const CARD_ACTIONS = [
+  { attr: 'invite', send: requestInvitation, ask: '?invite=1',
+    done: 'Invitation sent', already: 'Already invited',
+    say: (email) => `Invitation sent to ${email}. Google will email it.`,
+    sayAlready: (email) => `${email} is already on the guest list.` },
+  { attr: 'interest', send: requestInterest, ask: '?interest=1',
+    done: 'Interest noted', already: 'Already noted',
+    say: (email) => `Noted — the organiser knows ${email} is interested.`,
+    sayAlready: (email) => `${email} is already on the list for this event.` },
+];
+
 document.addEventListener('click', async (ev) => {
-  const button = ev.target.closest('[data-invite]');
-  if (!button || button.disabled) return;
+  const found = CARD_ACTIONS
+    .map((a) => ({ a, button: ev.target.closest(`button[data-${a.attr}]`) }))
+    .find((x) => x.button);
+  if (!found || found.button.disabled) return;
+  const { a, button } = found;
   ev.preventDefault();
 
+  const id = button.dataset[a.attr];
   const email = savedEmail();
   // The address was cleared in another tab between the render and the press. Rather than
   // send nothing, hand over to the page that can ask for one.
-  if (!email) { location.hash = `/event/${button.dataset.invite}?invite=1`; return; }
+  if (!email) { location.hash = `/event/${id}${a.ask}`; return; }
 
   const previous = button.innerHTML;
   button.disabled = true;
   button.textContent = 'Sending…';
-  const body = await requestInvitation({ event: button.dataset.invite, email });
+  const body = await a.send({ event: id, email });
 
   if (!body.ok) {
     button.disabled = false;
@@ -194,13 +220,11 @@ document.addEventListener('click', async (ev) => {
   }
   // It stays disabled and says so: pressing it again would do nothing, and a button that
   // looks pressable after it has worked invites exactly that.
-  button.textContent = body.already ? 'Already invited' : 'Invitation sent';
+  button.textContent = body.already ? a.already : a.done;
   button.classList.add('done');
   // Short, and it names the address: it was remembered rather than typed, so the one thing
   // worth confirming is WHICH address this went to.
-  toast(body.already
-    ? `${email} is already on the guest list.`
-    : `Invitation sent to ${email}. Google will email it.`,
+  toast(body.already ? a.sayAlready(email) : a.say(email),
     { link: body.link ? { href: body.link, label: 'Open in Google Calendar' } : null });
 });
 

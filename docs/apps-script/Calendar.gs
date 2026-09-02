@@ -469,7 +469,11 @@ function syncNow() {
   if (!ctx) return;
   ensureColumns_(ctx.sheet, ctx.head,
     ['Calendar Event ID', 'Calendar Link', 'Meeting Link', 'Attendees Emails', 'Attendees',
-     'Invite Subscribers?', 'Subscribers Invited At']);
+     'Invite Subscribers?', 'Subscribers Invited At',
+     // Written by the website (/api/interest), never by this script and never from the
+     // calendar — there is nothing in a calendar event that corresponds to it. It is created
+     // here only so it exists before anybody presses the button.
+     'Interested Emails']);
   ctx = open_();                                     // re-read: columns may have been added
 
   var created = 0, updated = 0, cancelled = 0, revived = 0, unflagged = 0, deleted = 0;
@@ -1197,6 +1201,7 @@ var HEADERS = {
   calendar_event_id: ['calendar event id'], calendar_link: ['calendar link'],
   attendees: ['attendees', 'participants', 'guest list'],
   attendees_emails: ['attendees emails', 'attendee emails', 'attendees email'],
+  interested_emails: ['interested emails'],
   meeting_link: ['meeting link', 'video link', 'join link'],
   invite_subscribers: ['invite subscribers?', 'invite subscribers'],
   subscribers_invited: ['subscribers invited at', 'subscribers invited']

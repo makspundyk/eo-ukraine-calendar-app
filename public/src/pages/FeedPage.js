@@ -13,7 +13,7 @@
 import { useEventsApi } from '../api/useEventsApi.js';
 import * as EventCard from '../components/EventCard.js';
 import * as Timeline from '../components/Timeline.js';
-import { chip, register, action } from '../components/ui.js';
+import { chip, action } from '../components/ui.js';
 import { escape as e, monthYear, placeLabel, displayDate } from '../format.js';
 import { savedEmail, savedName, maybeAsk } from '../identity.js';
 import { requestSubscription } from '../api/attend.js';
@@ -188,7 +188,7 @@ export function render({ events, tbc, q, counts, facets }) {
           <a class="card-hit" href="#/event/${e(ev.id)}" aria-label="${e(ev.title)}"></a>
           <span class="t">${e(ev.title)}</span>
           <span class="factline">${e([ev.date_note, placeLabel(ev)].filter(Boolean).join(' · '))}</span>
-          ${ev.registration_url ? register(ev.registration_url, { small: true, ghost: true, label: 'Register interest' }) : ''}
+          ${action(ev, { small: true, ghost: true, label: 'Register interest' })}
         </div>`).join('')}
     </div>` : ''}
 
