@@ -17,7 +17,11 @@
 import { getCalendar } from '../../lib/calendar.mjs';
 
 export async function onRequestGet(context) {
-  const { body, logLine, issues } = await getCalendar(context.env);
+  const url = new URL(context.request.url);
+  const { body, logLine, issues } = await getCalendar(context.env, {
+    scope: url.searchParams.get('scope'),
+    eventId: url.searchParams.get('event'),
+  });
 
   // Server-side only. Never the key, the token, the Authorization header, or the environment.
   console.log(logLine);

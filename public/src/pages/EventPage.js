@@ -27,10 +27,25 @@ export const meta = {
 
 const api = useEventsApi();
 
+/**
+ * Two-stage load. The list already holds this event's photograph, title, dates and place, so
+ * the page paints from that immediately and the description, highlights, biography and venue
+ * fill in when they arrive — a member reading the headline does not wait on prose they have
+ * not reached yet. Arriving on a deep link there is nothing cached, so it waits once.
+ */
 export async function load(route) {
-  const ev = await api.byId(route.params.id);
+  const known = await api.known(route.params.id);
+  if (known && known.description === undefined) return { ev: known, partial: true };
+  const ev = known?.description !== undefined ? known : await api.byId(route.params.id);
   if (!ev) throw new Error('That event is not in the calendar.');
-  return { ev };
+  return { ev, partial: false };
+}
+
+/** Fetch the rest, then repaint in place. */
+export async function mount({ ev, partial }, { rerender } = {}) {
+  if (!partial || !rerender) return;
+  const full = await api.byId(ev.id);
+  if (full) rerender({ ev: full, partial: false });
 }
 
 /* --- pieces ------------------------------------------------------------- */
@@ -102,7 +117,7 @@ const initials = (name) => name.split(/\s+/).slice(0, 2).map((w) => w[0] || '').
 
 /* --- page --------------------------------------------------------------- */
 
-export function render({ ev }) {
+export function render({ ev, partial }) {
   const cta = register(ev.registration_url, {
     label: ev.date_tbc ? 'Register interest' : 'Register for this event',
   });
@@ -138,9 +153,10 @@ export function render({ ev }) {
         </div>
       </section>
 
-      ${card('About this event', paras
-        ? `<div class="rich">${paras}</div>`
-        : `<p class="muted">No description has been added yet.</p>`)}
+      ${paras ? card('About this event', `<div class="rich">${paras}</div>`)
+        : partial ? `<section class="pcard"><h2>About this event</h2>
+            <div class="skeleton"><span></span><span></span><span></span></div></section>`
+        : card('About this event', `<p class="muted">No description has been added yet.</p>`)}
 
       ${card('What you get out of it', ev.highlights?.length ? `
         <ul class="ticks">${ev.highlights.map((h) => `

@@ -40,6 +40,32 @@ answers `{ ok: false, source: "mock" }` with a generic message, and the page fal
 demo data in `public/data/events.json` and shows a small banner saying so. The site is never
 blank and never shows a stack trace. The real reason goes to the server log only.
 
+### What is fetched, and when
+
+Nothing is fetched before it is needed, and nothing twice in a visit:
+
+| | |
+|---|---|
+| landing on the feed | the upcoming list, **light records only** — no descriptions |
+| scrolling | nothing. The feed renders 12 cards and appends more from memory |
+| opening an event | that one event's full record, if the list did not already carry it |
+| **Past events** | a second request, and only when somebody presses it |
+
+Each result is held until the page is reloaded, so going back, switching to the table, or
+reopening an event costs nothing.
+
+Server-side: the access token is cached until it nears expiry, and the parsed sheet for 60
+seconds, so a member opening an event straight after the feed loaded costs no upstream call at
+all. Cloudflare then caches a successful response at the edge for 120s.
+
+**The sheet read itself is not chunked, deliberately.** Spreadsheet rows are in the order a
+human typed them, not date order, so "the next ten events" cannot be a row range — every row
+must be read and sorted before the first card is right. And the cost is the round trip, not the
+rows: measured against this sheet, one column takes 422ms and all twenty-two take 476ms, on top
+of ~190ms to mint a token. Splitting the read into chunks would multiply the round trips and
+make the first card appear later. Caching the token and slimming the payload are the wins;
+chunking is not.
+
 ### Environment
 
 Same names in both places. **Nothing here is ever read by browser code.**

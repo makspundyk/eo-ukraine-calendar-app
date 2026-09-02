@@ -91,7 +91,9 @@ createServer(async (req, res) => {
   let p = new URL(req.url, 'http://x').pathname;
 
   if (p === '/api/calendar') {
-    const { body, logLine, issues } = await getCalendar(ENV);
+    const q = new URL(req.url, 'http://x').searchParams;
+    const { body, logLine, issues } = await getCalendar(ENV,
+      { scope: q.get('scope'), eventId: q.get('event') });
     console.log(`  ${logLine}`);
     for (const i of issues.slice(0, 20)) console.log(`    row ${i.row} ${i.kind} — ${i.detail}`);
     res.writeHead(200, { ...HEADERS,

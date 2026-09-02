@@ -336,3 +336,15 @@
 /* A filter that would return nothing says so rather than letting a member find out. */
 .filters a.none{opacity:.42}
 .filters a.none.on{opacity:1}
+/* The scroll sentinel: zero height, no paint, just something to observe. */
+.feed-more{grid-column:1/-1;height:1px}
+
+/* Placeholder lines while an opened event's prose is still arriving. Sized like the text it
+   replaces, so nothing jumps when it lands. */
+.skeleton{display:grid;gap:10px}
+.skeleton span{height:12px;border-radius:6px;background:var(--surface-2);
+  animation:skeleton 1.4s ease-in-out infinite}
+.skeleton span:nth-child(2){width:92%;animation-delay:.12s}
+.skeleton span:nth-child(3){width:64%;animation-delay:.24s}
+@keyframes skeleton{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.skeleton span{animation:none}}

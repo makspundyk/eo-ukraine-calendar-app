@@ -71,14 +71,50 @@ export async function load(route) {
            q: { ...route.query, view: 'feed' } };
 }
 
-export function render({ events, tbc, q, counts, facets }) {
-  let lastMonth = null;
-  const rows = events.map((ev) => {
+/**
+ * The feed renders a page at a time and appends the next one as the reader nears the end.
+ *
+ * This is about the DOM, not the network: the events are already in memory. Building two
+ * hundred cards — each with a photograph, a scrim and an overlay — costs layout work and
+ * decoding a member scrolling past the third card never asked for. A page is enough to fill
+ * any screen, and the rest arrives before it is reached.
+ */
+const PAGE = 12;
+
+/** Month headers are emitted mid-list, so a page has to know what the previous page ended on. */
+function renderSlots(events, from, to) {
+  let lastMonth = from > 0 ? monthYear(events[from - 1].start) : null;
+  let out = '';
+  for (const ev of events.slice(from, to)) {
     const m = monthYear(ev.start);
-    const head = m !== lastMonth ? Timeline.monthHeader(ev.start) : '';
+    if (m !== lastMonth) out += Timeline.monthHeader(ev.start);
     lastMonth = m;
-    return `${head}<div class="slot">${Timeline.slotRail(ev)}<div>${EventCard.render(ev)}</div></div>`;
-  }).join('');
+    out += `<div class="slot">${Timeline.slotRail(ev)}<div>${EventCard.render(ev)}</div></div>`;
+  }
+  return out;
+}
+
+/**
+ * Appends the next page when the sentinel comes into view. Called by main.js after every
+ * render; `mount` is the seam a framework would replace with a lifecycle hook.
+ */
+export function mount({ events }) {
+  const feed = document.querySelector('.feed');
+  const sentinel = document.querySelector('.feed-more');
+  if (!feed || !sentinel || events.length <= PAGE) return;
+
+  let shown = PAGE;
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries.some((x) => x.isIntersecting)) return;
+    sentinel.insertAdjacentHTML('beforebegin', renderSlots(events, shown, shown + PAGE));
+    shown += PAGE;
+    if (shown >= events.length) { observer.disconnect(); sentinel.remove(); }
+  }, { rootMargin: '600px 0px' });      // start early enough that nobody sees a gap
+  observer.observe(sentinel);
+}
+
+export function render({ events, tbc, q, counts, facets }) {
+  const rows = renderSlots(events, 0, PAGE);
 
   return `
   <div class="page-head">
@@ -92,7 +128,8 @@ export function render({ events, tbc, q, counts, facets }) {
   ${filterBar(q, facets)}
 
   ${events.length ? `<div class="feed"><div class="rail"><span class="rail-line"></span></div>
-    <div></div>${rows}</div>`
+    <div></div>${rows}${events.length > 12
+      ? '<div class="feed-more" aria-hidden="true"></div>' : ''}</div>`
     : `<div class="empty"><b>Nothing here yet</b>Try another type, or look at past events.</div>`}
 
   ${tbc.length ? `

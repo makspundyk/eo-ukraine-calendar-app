@@ -66,6 +66,12 @@ async function navigate(route) {
     const data = await page.load(route);
     app.innerHTML = shell(route);
     document.getElementById('page').innerHTML = page.render(data);
+    // A page may want to do something after it is in the document — observe a scroll
+    // sentinel, or fill itself in as slower data arrives. Migration: an onMounted hook.
+    await page.mount?.(data, { rerender: (d) => {
+      if (parse().path !== route.path) return;      // the reader has already moved on
+      document.getElementById('page').innerHTML = page.render(d);
+    } });
     if (route.name === 'event') window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (err) {
     app.innerHTML = shell(route);

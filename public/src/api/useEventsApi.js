@@ -6,11 +6,14 @@
  * a live sheet, "upcoming" has to mean the same thing on every screen, and that is only true
  * if one function decides it.
  */
-import { fetchEvents } from './http.js';
+import { listEvents, eventDetail, knownEvent } from './http.js';
 
 export const useEventsApi = () => ({
-  /** Everything, plus the season label and the data issues the normaliser found. */
-  all: () => fetchEvents(),
+  /** The upcoming list. Past events are a separate scope and are never fetched with it. */
+  all: () => listEvents('upcoming'),
+
+  /** What the list already knows about an event — enough to paint the page while detail loads. */
+  known: (id) => knownEvent(id),
 
   /**
    * GET one event by id.
@@ -21,13 +24,7 @@ export const useEventsApi = () => ({
    * a date, and a link written by hand without one. Ambiguity is never guessed at: two events
    * sharing a title means the short form resolves to neither.
    */
-  async byId(id) {
-    const { data } = await fetchEvents();
-    const exact = data.find((e) => e.id === id);
-    if (exact) return exact;
-    const partial = data.filter((e) => e.id.startsWith(`${id}-`));
-    return partial.length === 1 ? partial[0] : null;
-  },
+  byId: (id) => eventDetail(id),
 
   /**
    * @param {{kind?:string, where?:'online'|'inperson', when?:'upcoming'|'past'|'all'}} filter
@@ -45,20 +42,17 @@ export const useEventsApi = () => ({
    * number on a tab is what you will actually get when you press it.
    */
   async list(filter = {}) {
-    const { data, generated_at } = await fetchEvents();
     const when = filter.when ?? 'upcoming';
+    // Only the scope being looked at is fetched. Pressing "Past events" is what causes the
+    // past to be requested, and it is then held for the rest of the visit.
+    const { events: data, generated_at, totals } = await listEvents(when);
     const cut = generated_at;
 
-    const inScope = (e) => {
-      if (e.date_tbc || !e.start) return when !== 'past';   // undated is never "past"
-      const endish = e.end || e.start;
-      return when === 'all' ? true : when === 'past' ? endish < cut : endish >= cut;
-    };
     const byKind = (e) => !filter.kind || e.kind === filter.kind;
     const byWhere = (e) => !filter.where
       || (filter.where === 'online' ? e.is_online : !e.is_online);
 
-    const scoped = data.filter(inScope);
+    const scoped = data;                       // the server already applied the scope
     const rows = scoped.filter(byKind).filter(byWhere);
 
     const dated = rows.filter((e) => !e.date_tbc && e.start);
@@ -94,16 +88,13 @@ export const useEventsApi = () => ({
       inperson: forWhere.filter((e) => !e.is_online).length,
     };
 
-    const datedAll = data.filter((e) => !e.date_tbc && e.start).filter(byKind).filter(byWhere);
     return {
       today: cut,
       events: shown,
       tbc: when === 'past' ? [] : rows.filter((e) => e.date_tbc || !e.start),
       facets: { types, places, total: scoped.filter(byWhere).length },
-      counts: {
-        upcoming: datedAll.filter((e) => (e.end || e.start) >= cut).length,
-        past: datedAll.filter((e) => (e.end || e.start) < cut).length,
-      },
+      // From the server, so the Past tab can be labelled without fetching the past.
+      counts: totals ?? { upcoming: 0, past: 0 },
     };
   },
 });
