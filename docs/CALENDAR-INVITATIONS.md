@@ -31,14 +31,22 @@ Two halves, deliberately with different authority:
 
 | | Owner | Synced |
 |---|---|---|
-| Title, Start/End Date, Start/End Time, Timezone | **the sheet** | every sync |
-| Location and room, Description, agenda, video link, colour, reminders | **the manager** | **created once, never touched again** |
-| Guest list | the website adds; the manager may remove | appended only |
+| Title, dates, times, timezone | **the sheet** | every change |
+| Description and location | **the sheet, until somebody edits them in Google Calendar** | see below |
+| Agenda beyond the template, video link, colour, reminders, guest list | **the organiser** | never touched |
 
-On creation the script fills a starting description and location from the sheet. **After that
-it only ever corrects the title and the times.** A room booked by hand at 09:00 is still there
-after the 10:00 sync. Without this rule an hourly sync silently undoes the manager's work, and
-she stops trusting it within a week.
+**Everything the sheet puts on the event is kept in step with the sheet.** Change a summary, a
+speaker, the highlights, the venue — the description is rebuilt and the event updated.
+
+**Unless the organiser has edited that field in Google Calendar.** The script remembers a
+fingerprint of exactly what it last wrote. If the event still holds that, the sheet is the
+authority and it is replaced. If it holds something else, somebody typed it, and hers wins —
+the sheet's version is skipped and the log says so.
+
+So a room booked by hand at 09:00 is still there after the 10:00 sync, and a summary corrected
+in the sheet at 09:00 reaches the event by 09:10. Without the first half an hourly job silently
+undoes the organiser's work and she stops trusting it within a week; without the second half
+the sheet stops being the source of truth.
 
 A row that stops being Published gets its event **cancelled, not deleted**, so guests are told
 rather than having it disappear from their calendars.
@@ -161,14 +169,15 @@ correct it there. It should now read something like:
 |---|---|
 | A row becomes `Published`, is complete, has a **future** date, and `Calendar Event ID` is empty | The event is created **immediately**, and everyone in `DEFAULT_GUESTS` is invited |
 | The same, but the date has **already passed** | Nothing. No event, no invitations |
-| A date, time, timezone or title is changed on a row that already has an event | Queued, and sent **about five minutes after you stop editing** |
-| Anything else changes — room, description, guests | Nothing. The organiser owns those |
-| Hourly | A sweep catches anything the above missed |
+| Any field the event shows is changed — title, dates, times, venue, summary, highlights, speaker, who it is for, registration link | Queued, and sent **about ten minutes after you stop editing** |
+| A field the event does not show is changed — notes, internal columns | Nothing. Nobody is mailed about a note |
+| Hourly | A sweep catches anything the above missed — **quietly**, without mailing guests, because it is catching up rather than announcing |
 
-**Why the five-minute wait.** Changing a date, then a start time, then an end time is three
-edits describing *one* change. Sending each one moves the event three times and emails every
-guest three times. The clock **restarts on every edit**, so only a row you have stopped
-touching is sent — you finish, then the calendar catches up once.
+**Why the ten-minute wait.** Changing a date, then a time, then the summary, then the speaker
+is four edits describing *one* change. Sending each one moves the event four times and emails
+every guest four times. The clock **restarts on every edit**, so only a row you have stopped
+touching is sent — you finish, then the calendar catches up once. Ten minutes is long enough to
+rewrite a description without the calendar interrupting.
 
 The queue is keyed by the calendar event id, not the row number, so sorting the sheet while
 something is queued cannot send the update to the wrong event.
@@ -407,8 +416,8 @@ Two new columns on the events tab:
 | `Invite Subscribers?` | a checkbox. Tick it when the event is ready |
 | `Subscribers Invited At` | written by the script, and the reason nobody is ever invited twice |
 
-**Ticking the box does not send anything for five minutes.** There is no unsend on a mailing to
-the whole list, so the tick is recorded and acted on only if it is *still* ticked five minutes
+**Ticking the box does not send anything for ten minutes.** There is no unsend on a mailing to
+the whole list, so the tick is recorded and acted on only if it is *still* ticked ten minutes
 later. Untick it before then and nothing happens — the sheet says "Cancelled — nobody was
 invited."
 

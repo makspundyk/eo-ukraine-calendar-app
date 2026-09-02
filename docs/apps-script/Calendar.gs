@@ -81,14 +81,17 @@ function defaultGuests_() {
 }
 
 /**
- * How long a row must sit untouched before its date or time change is pushed to the calendar.
+ * How long a row must sit untouched before its changes are pushed to the calendar.
  *
- * Editing a date, then a start time, then an end time is three edits describing ONE change.
- * Sending each one moves the event three times and emails every guest three times. So the
- * clock restarts on each edit and only a quiet row is sent — the human finishes, then the
+ * Editing a date, then a time, then the summary, then the speaker is four edits describing ONE
+ * change. Sending each one moves the event four times and emails every guest four times. So
+ * the clock restarts on each edit and only a quiet row is sent — the person finishes, then the
  * calendar catches up once.
+ *
+ * Ten minutes: long enough to rewrite a description without the calendar interrupting, short
+ * enough that nobody wonders whether it worked.
  */
-var QUIET_MS = 5 * 60 * 1000;
+var QUIET_MS = 10 * 60 * 1000;
 var PENDING_KEY = 'PENDING_UPDATES';
 
 /** The subscriber list lives on its own tab. */
@@ -96,14 +99,58 @@ var SUBS_TAB = 'EventCalendarSubscriptions';
 var SUBS_COLUMNS = ['Email', 'Date Subscribed', 'Full Name', 'Unsubscribed', 'Token'];
 
 /**
- * The same five minutes, for a different reason. Ticking "Invite subscribers?" mails the whole
+ * The same quiet period, for a different reason. Ticking "Invite subscribers?" mails the whole
  * list, and there is no unsend. The tick is recorded and acted on only if it is STILL ticked
- * five minutes later, so an accidental click can be undone by unticking it.
+ * when the timer fires, so an accidental click can be undone by unticking it.
  */
 var INVITE_KEY = 'PENDING_INVITES';
 
-/** Fields whose change has to reach the calendar. Anything else is the organiser's business. */
-var WATCHED = ['title', 'start_date', 'end_date', 'start_time', 'end_time', 'timezone'];
+/**
+ * Every sheet field the calendar event shows — its title, its times, its location, and each
+ * line of the description template. Changing any of them queues an update.
+ *
+ * Notes and internal columns are not here: they are not on the event, so changing one should
+ * not mail every guest.
+ */
+var WATCHED = ['title', 'start_date', 'end_date', 'start_time', 'end_time', 'timezone',
+               'location', 'venue', 'summary', 'highlights', 'who_for',
+               'speaker_name', 'speaker_title', 'registration_url', 'date_note'];
+
+/** Fingerprints of what WE last wrote, so a hand-edit can be told from a stale value. */
+var WRITTEN_KEY = 'WRITTEN_FINGERPRINTS';
+
+function fingerprint_(text) {
+  var h = 5381;
+  var v = String(text || '');
+  for (var i = 0; i < v.length; i++) h = ((h * 33) ^ v.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function writtenMap_() {
+  try { return JSON.parse(
+    PropertiesService.getScriptProperties().getProperty(WRITTEN_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function rememberWritten_(eventId, description, location) {
+  var map = writtenMap_();
+  map[eventId] = { d: fingerprint_(description), l: fingerprint_(location) };
+  PropertiesService.getScriptProperties().setProperty(WRITTEN_KEY, JSON.stringify(map));
+}
+
+/**
+ * May we replace this field?
+ *
+ * Yes if what is on the event is exactly what we last wrote there — then nobody has touched
+ * it and the sheet is the authority. No if it differs, because somebody edited it in Google
+ * Calendar, and overwriting an organiser's own words every hour is how an automation gets
+ * switched off. An event we have no record of is left alone for the same reason.
+ */
+function mayReplace_(eventId, field, current) {
+  var record = writtenMap_()[eventId];
+  if (!record) return false;
+  return record[field] === fingerprint_(current);
+}
 
 /** Prompts for the organisers who go on every new event. */
 function setDefaultGuests() {
@@ -473,14 +520,10 @@ function syncNow() {
       var existing = fetch_(eventId);
       if (existing) {
         writeAttendees_(ctx, i, existing);
-        // Only the title, the times, and bringing it back if it had been cancelled. The
-        // organiser owns the room, the description and the guests.
-        var patch = { summary: title, start: when.start, end: when.end };
-        if (existing.status === 'cancelled') { patch.status = 'confirmed'; revived++; }
-        try {
-          Calendar.Events.patch(patch, calendarId_(), eventId);
-          if (existing.status !== 'cancelled') updated++;
-        } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
+        if (existing.status === 'cancelled') revived++;
+        // Quietly: the sweep is catching up, not announcing anything.
+        else if (applyUpdate_(ctx, row, eventId, { notify: false })) updated++;
+        if (existing.status === 'cancelled') applyUpdate_(ctx, row, eventId, { notify: true });
         return;
       }
       // The id points at nothing — deleted in Google, or the wrong calendar. Rebuild rather
@@ -552,14 +595,7 @@ function flushPending() {
     // Correcting a past event would notify every guest about something that is over.
     if (isPast_(found, ctx.map)) return;
 
-    var when = times_(found, ctx.map);
-    try {
-      Calendar.Events.patch(
-        { summary: String(get_(found, ctx.map, 'title')).trim(),
-          start: when.start, end: when.end },
-        calendarId_(), id, { sendUpdates: 'all' });
-      applied++;
-    } catch (e) { Logger.log('Deferred update failed for ' + id + ': ' + e.message); }
+    if (applyUpdate_(ctx, found, id, { notify: true })) applied++;
   });
   savePending_(map);
   if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
@@ -833,6 +869,67 @@ function refreshAttendees() {
   tell_('Read the guest list for ' + seen + ' event(s) — ' + total + ' guest(s) in total.');
 }
 
+/**
+ * Pushes a row's current state onto its event: the title, the times, and — when it is safe —
+ * the description and the location.
+ *
+ * `notify` sends the change to the guests. True for a real edit; false for the hourly sweep,
+ * which is only catching up and should not mail anybody about something that has not changed
+ * since they were told about it.
+ */
+function applyUpdate_(ctx, row, id, options) {
+  var existing = fetch_(id);
+  if (!existing) return false;
+
+  var when = times_(row, ctx.map);
+  var patch = { summary: String(get_(row, ctx.map, 'title')).trim(),
+                start: when.start, end: when.end };
+  if (existing.status === 'cancelled') patch.status = 'confirmed';
+
+  // The description and the location are regenerated from the sheet, but written ONLY when the
+  // event still holds exactly what we last put there. If the organiser has edited either by
+  // hand, hers wins — overwriting an organiser's own words every hour is how an automation
+  // gets switched off.
+  var description = description_(row, ctx.map);
+  var location = String(get_(row, ctx.map, 'venue') || get_(row, ctx.map, 'location') || '');
+  var kept = [];
+
+  if (mayReplace_(id, 'd', existing.description)) patch.description = description;
+  else if (fingerprint_(existing.description) !== fingerprint_(description)) kept.push('description');
+
+  if (mayReplace_(id, 'l', existing.location)) patch.location = location;
+  else if (fingerprint_(existing.location) !== fingerprint_(location)) kept.push('location');
+
+  var unchanged = patch.summary === existing.summary
+    && patch.description === undefined && patch.location === undefined
+    && sameWhen_(existing, when) && patch.status === undefined;
+  if (unchanged) return false;                       // nothing to say, so say nothing
+
+  try {
+    Calendar.Events.patch(patch, calendarId_(), id,
+      { sendUpdates: options && options.notify ? 'all' : 'none' });
+    rememberWritten_(id,
+      patch.description === undefined ? existing.description : description,
+      patch.location === undefined ? existing.location : location);
+    if (kept.length) {
+      Logger.log('Kept the hand-edited ' + kept.join(' and ') + ' on "' + patch.summary + '".');
+    }
+    return true;
+  } catch (e) {
+    Logger.log('Update failed for ' + id + ': ' + e.message);
+    return false;
+  }
+}
+
+/** Google returns dates and dateTimes in its own shapes; compare what we would send. */
+function sameWhen_(existing, when) {
+  var a = existing.start || {}, b = existing.end || {};
+  return String(a.date || a.dateTime || '').slice(0, 16)
+           === String(when.start.date || when.start.dateTime || '').slice(0, 16)
+      && String(b.date || b.dateTime || '').slice(0, 16)
+           === String(when.end.date || when.end.dateTime || '').slice(0, 16);
+}
+
 /* --------------------------------------------------------------- calendar io */
 
 /**
@@ -866,6 +963,7 @@ function createEvent_(ctx, row, i) {
     var made = Calendar.Events.insert(body, calendarId_(),
       guests.length ? { sendUpdates: 'all' } : {});
     write_(ctx.sheet, ctx.head, ctx.map, i, made.id, made.htmlLink);
+    rememberWritten_(made.id, body.description, body.location);
     return made;
   } catch (e) {
     Logger.log('Row ' + (i + 1) + ': ' + e.message);

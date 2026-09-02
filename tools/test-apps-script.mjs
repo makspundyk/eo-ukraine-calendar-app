@@ -22,7 +22,7 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
   + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_, isPast_, '
-  + 'today_, isCancelled_ };'));
+  + 'today_, isCancelled_, fingerprint_, mayReplace_, rememberWritten_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -203,7 +203,7 @@ await new Promise((r) => setTimeout(r, 5));
 mod.markPending_('evt-a');
 check('a second edit RESTARTS the clock rather than adding a second entry',
   Object.keys(mod.pending_()).length === 1 && mod.pending_()['evt-a'] > t0);
-check('the wait is five minutes', mod.QUIET_MS === 300000, String(mod.QUIET_MS));
+check('the wait is ten minutes', mod.QUIET_MS === 600000, String(mod.QUIET_MS));
 const age = Date.now() - mod.pending_()['evt-a'];
 check('a freshly edited row is NOT due yet', age < mod.QUIET_MS);
 mod.savePending_({ 'evt-old': Date.now() - mod.QUIET_MS - 1000 });
@@ -211,12 +211,33 @@ check('a row quiet for longer than the wait IS due',
   Date.now() - mod.pending_()['evt-old'] >= mod.QUIET_MS);
 check('the queue is keyed by event id, so sorting the sheet cannot misroute an update',
   Object.keys(mod.pending_()).every((k) => k.startsWith('evt')));
-check('only when/what fields are watched',
-  mod.WATCHED.join() === 'title,start_date,end_date,start_time,end_time,timezone',
-  mod.WATCHED.join());
-check('the room and the description are NOT watched',
-  !mod.WATCHED.includes('location') && !mod.WATCHED.includes('venue')
-  && !mod.WATCHED.includes('summary'));
+// Everything the calendar event shows, so editing any of it reaches the event.
+['title','start_date','end_date','start_time','end_time','timezone','location','venue',
+ 'summary','highlights','who_for','speaker_name','speaker_title','registration_url']
+  .forEach((f) => check(`${f} is watched`, mod.WATCHED.includes(f)));
+check('internal columns are NOT watched, so editing a note mails nobody',
+  !mod.WATCHED.includes('notes') && !mod.WATCHED.includes('attendees')
+  && !mod.WATCHED.includes('event_owner'));
+
+console.log('\nan organiser\'s own words are not overwritten');
+globalThis.__props = {};
+mod.rememberWritten_('evt-1', 'generated text', 'Kyiv');
+check('what we wrote may be replaced', mod.mayReplace_('evt-1', 'd', 'generated text'));
+check('what somebody edited may NOT be replaced',
+  !mod.mayReplace_('evt-1', 'd', 'generated text, plus the room is now B2'));
+check('the location is tracked separately', mod.mayReplace_('evt-1', 'l', 'Kyiv')
+  && !mod.mayReplace_('evt-1', 'l', 'Lviv'));
+check('an event we have no record of is left alone',
+  !mod.mayReplace_('evt-unknown', 'd', 'anything'));
+mod.rememberWritten_('evt-1', 'a second version', 'Kyiv');
+check('after we write again, the new text is ours to replace',
+  mod.mayReplace_('evt-1', 'd', 'a second version')
+  && !mod.mayReplace_('evt-1', 'd', 'generated text'));
+check('different text gives different fingerprints',
+  mod.fingerprint_('a') !== mod.fingerprint_('b'));
+check('the same text gives the same fingerprint',
+  mod.fingerprint_('x y z') === mod.fingerprint_('x y z'));
+globalThis.__props = {};
 
 console.log('\ndefault guests');
 globalThis.__props = { DEFAULT_GUESTS: ' a@b.com , c@d.com ,,not-an-email ' };
