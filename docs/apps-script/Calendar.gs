@@ -617,14 +617,20 @@ function inviteSubscribers_(ctx, row, i, eventId) {
     attendees.push(entry);
   });
 
+  var updated;
   try {
-    Calendar.Events.patch({ attendees: attendees, guestsCanSeeOtherGuests: false,
-                            guestsCanInviteOthers: false },
-                          calendarId_(), eventId, { sendUpdates: 'all' });
+    updated = Calendar.Events.patch({ attendees: attendees, guestsCanSeeOtherGuests: false,
+                                      guestsCanInviteOthers: false },
+                                    calendarId_(), eventId, { sendUpdates: 'all' });
   } catch (e) {
     Logger.log('Inviting subscribers failed for ' + eventId + ': ' + e.message);
     return 0;
   }
+
+  // Refresh the two guest-list columns straight away. They were only written by the hourly
+  // sweep, so the sheet showed a stale list for up to an hour after somebody watched the
+  // invitations go out — which reads as the invite having failed.
+  writeAttendees_(ctx, i, updated || fetch_(eventId));
 
   var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
   if (head && head.map.subscribers_invited !== undefined) {
@@ -786,7 +792,12 @@ function recordedEmails_(row, col) {
     .filter(function (x) { return x.indexOf('@') > 0; });
 }
 
-/** Re-reads the guest list for every row that has an event, without touching the events. */
+/**
+ * Re-reads the guest list for every row that has an event, without touching the events.
+ *
+ * Also the way to catch up after somebody joins through the website: /api/attend adds them to
+ * the calendar directly and cannot write to this sheet, so those arrive on the next sweep.
+ */
 function refreshAttendees() {
   var ctx = open_();
   if (!ctx) return;

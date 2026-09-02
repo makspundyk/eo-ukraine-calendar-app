@@ -288,6 +288,11 @@ is a test asserting an address in that column does not appear in the published p
 
 The list is sorted and written **only when it has changed**, so a quiet hour costs no writes.
 
+**When it refreshes.** Whenever the sync touches the event — every hour, when subscribers are
+invited, and on **Refresh attendees now**. One case arrives late by design: somebody joining
+through the website goes straight to the calendar, because `/api/attend` has no way to write to
+this sheet. Those appear on the next sweep, or immediately if you press *Refresh attendees now*.
+
 ### The `Calendar Event ID` column
 
 The script adds it and fills it. It is the difference between creating and updating:
