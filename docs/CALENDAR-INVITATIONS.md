@@ -111,10 +111,61 @@ secret; they are plain variables.
    the calendar of the account approving it, which is exactly the intent
 6. **EO Calendar → Which calendar am I writing to?** — it prints the calendar's name and id,
    and the account it is running as. Set `GOOGLE_CALENDAR_ID` to that id
-7. **EO Calendar → Install hourly sync**
+7. **EO Calendar → Install hourly sync** — this also installs the on-edit check below
 
 **The menu only appears after the spreadsheet is reloaded**, because `onOpen` runs when the
 sheet opens. If it is not there, reload the tab.
+
+### What the script does about incomplete rows
+
+A row can be marked Published before it is ready. The script never creates a half-finished
+event, and it says which rows it skipped and why.
+
+**Required before a row is published at all** — the same three as `SHEET.md`:
+`Title`, `Type`, `Registration URL`. Without the link the Register button is dead; without the
+type the event falls outside every filter.
+
+It also reports a `Start Date` that is not `YYYY-MM-DD`, an `End Date` before the start, a time
+that is not `HH:MM`, and an `End Time` with no `Start Time`.
+
+Three places it is caught:
+
+| When | What happens |
+|---|---|
+| As you mark a row Published | The row turns pink and the Status cell gets a note listing exactly what is missing. The note and the colour clear themselves when the row is fixed |
+| **EO Calendar → Check published rows** | Every incomplete published row, listed at once. Run it before announcing a season |
+| Every sync | Incomplete rows are skipped, and the summary names them |
+
+**It does not revert the cell.** People set the status first and fill the row afterwards, and a
+script that undoes their typing gets switched off within a day. It flags, it does not fight.
+
+### A published event with no date yet
+
+That is a legitimate state, not an error — the website has a "Dates to be confirmed" section
+for it, and the script treats it as such: it is skipped with a note saying so, and **no hook is
+needed to catch the moment a date is added.**
+
+The sync is idempotent: it looks at every published row every time. Type the date in, and the
+next hourly run creates the event and writes its id back. **EO Calendar → Sync now** does it
+immediately if you do not want to wait.
+
+### The `Calendar Event ID` column
+
+The script adds it and fills it. It is the difference between creating and updating:
+
+| The cell | What the sync does |
+|---|---|
+| empty | creates a new event, writes the id and the link back |
+| has an id | updates **only** the title and the times on that event |
+| has an id, row no longer Published | **cancels** the event and **keeps the id** |
+| has an id, row published again | brings the same event back — the guests already on it are still on it |
+| has an id, but the event was deleted in Google | creates a fresh one and replaces the id, rather than failing forever |
+
+The fourth row is the reason the id is kept rather than cleared on unpublishing. Clearing it
+would mean re-publishing built a *second* event, and everybody already invited would be sitting
+on the first one, which they had been told was cancelled.
+
+**Never type in `Calendar Event ID`.** It is the only link between the row and the real event.
 
 #### Which calendar should the events live on?
 

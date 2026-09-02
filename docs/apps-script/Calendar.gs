@@ -50,6 +50,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('EO Calendar')
     .addItem('Sync now', 'syncNow')
+    .addItem('Check published rows', 'checkAll')
     .addItem('Install hourly sync', 'installTrigger')
     .addItem('Which calendar am I writing to?', 'whichCalendar')
     .addToUi();
@@ -80,75 +81,233 @@ function whichCalendar() {
 /** An hourly trigger, so nobody has to remember. Safe to run twice; it replaces itself. */
 function installTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'syncNow') ScriptApp.deleteTrigger(t);
+    if (['syncNow', 'onEditCheck'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   ScriptApp.newTrigger('syncNow').timeBased().everyHours(1).create();
-  tell_('The calendar will now sync every hour.');
+  // Installable rather than simple: a simple onEdit may not write notes or read other rows.
+  ScriptApp.newTrigger('onEditCheck').forSpreadsheet(ss).onEdit().create();
+  tell_('Done. The calendar syncs hourly, and a row marked Published while incomplete is '
+    + 'flagged as soon as you mark it.');
 }
 
-function syncNow() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('EventCalendar')
-           || SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+/**
+ * What a row needs before it may go in front of the chapter at all. Matches docs/SHEET.md:
+ * without a registration link the Register button is dead, and without a type it falls outside
+ * every filter.
+ */
+var REQUIRED_TO_PUBLISH = [
+  { field: 'title', label: 'Title' },
+  { field: 'type', label: 'Type' },
+  { field: 'registration_url', label: 'Registration URL' }
+];
+
+/**
+ * Everything wrong with one row, as a list of human sentences. Empty means it is fine.
+ *
+ * A published row with NO Start Date is deliberately not an error: "dates to be confirmed" is
+ * a real state the website has a section for. It simply cannot become a calendar entry yet.
+ */
+function problems_(row, col) {
+  var out = [];
+  for (var i = 0; i < REQUIRED_TO_PUBLISH.length; i++) {
+    var r = REQUIRED_TO_PUBLISH[i];
+    if (!String(get_(row, col, r.field) || '').trim()) out.push(r.label + ' is empty');
+  }
+  var start = iso_(get_(row, col, 'start_date'));
+  var rawStart = String(get_(row, col, 'start_date') || '').trim();
+  if (rawStart && !start) out.push('Start Date is not YYYY-MM-DD');
+  var end = iso_(get_(row, col, 'end_date'));
+  var rawEnd = String(get_(row, col, 'end_date') || '').trim();
+  if (rawEnd && !end) out.push('End Date is not YYYY-MM-DD');
+  if (start && end && end < start) out.push('End Date is before Start Date');
+  var t = String(get_(row, col, 'start_time') || '').trim();
+  if (t && !/^\d{1,2}:\d{2}$/.test(t)) out.push('Start Time is not HH:MM');
+  var t2 = String(get_(row, col, 'end_time') || '').trim();
+  if (t2 && !/^\d{1,2}:\d{2}$/.test(t2)) out.push('End Time is not HH:MM');
+  if (t2 && !t) out.push('End Time is set but Start Time is not');
+  return out;
+}
+
+/**
+ * Lists every published row that is not ready, without changing anything. Run it before
+ * announcing a season.
+ */
+function checkAll() {
+  var ctx = open_();
+  if (!ctx) return;
+  var lines = [];
+  eachRow_(ctx, function (row, i) {
+    if (!isPublished_(row, ctx.map)) return;
+    var bad = problems_(row, ctx.map);
+    if (bad.length) lines.push('Row ' + (i + 1) + ': ' + bad.join('; '));
+    else if (!iso_(get_(row, ctx.map, 'start_date'))) {
+      lines.push('Row ' + (i + 1) + ': published with no date — shown under '
+        + '"Dates to be confirmed", no calendar entry until a date is set');
+    }
+  });
+  tell_(lines.length ? lines.join('\n') : 'Every published row is complete.');
+}
+
+/**
+ * Runs on every edit, so a mistake is caught at the moment it is made rather than an hour
+ * later. It does NOT revert the cell: people set the status first and fill the row afterwards,
+ * and a script that undoes their typing gets switched off. It notes the problem on the Status
+ * cell and colours the row instead, and the note clears itself when the row is fixed.
+ *
+ * Install it from the EO Calendar menu — a simple onEdit cannot write notes.
+ */
+function onEditCheck(e) {
+  if (!e || !e.range) return;
+  var sheet = e.range.getSheet();
   var values = sheet.getDataRange().getValues();
   var head = findHeaderRow_(values);
-  if (!head) { log_('No header row found — nothing done.'); return; }
+  if (!head) return;
+  var i = e.range.getRow() - 1;
+  if (i <= head.index || i >= values.length) return;
 
-  var col = head.map;
-  ensureColumns_(sheet, head, ['Calendar Event ID', 'Calendar Link']);
-  values = sheet.getDataRange().getValues();          // re-read: columns may have been added
-  head = findHeaderRow_(values);
-  col = head.map;
+  var row = values[i];
+  var statusCell = head.map.status === undefined
+    ? null : sheet.getRange(i + 1, head.map.status + 1);
+  var width = Math.max(1, sheet.getLastColumn());
+  var rowRange = sheet.getRange(i + 1, 1, 1, width);
 
-  var created = 0, updated = 0, cancelled = 0;
-
-  for (var i = head.index + 1; i < values.length; i++) {
-    var row = values[i];
-    var title = String(get_(row, col, 'title') || '').trim();
-    if (!title) continue;
-
-    var status = String(get_(row, col, 'status') || '').trim().toLowerCase();
-    var published = status === 'published';
-    var eventId = String(get_(row, col, 'calendar_event_id') || '').trim();
-    var startDate = String(get_(row, col, 'start_date') || '').trim();
-
-    // Not published any more: cancel what exists, so guests are told.
-    if (!published) {
-      if (eventId) { cancel_(eventId); cancelled++; write_(sheet, head, col, i, '', ''); }
-      continue;
-    }
-    if (!startDate) continue;                          // no date yet, nothing to put anywhere
-
-    var when = times_(row, col);
-    if (eventId) {
-      // ONLY the title and the times. The organiser owns everything else.
-      try {
-        Calendar.Events.patch({ summary: title, start: when.start, end: when.end },
-                              CALENDAR_ID, eventId);
-        updated++;
-      } catch (e) { log_('Row ' + (i + 1) + ': ' + e.message); }
-    } else {
-      try {
-        var made = Calendar.Events.insert({
-          summary: title,
-          description: description_(row, col),
-          location: String(get_(row, col, 'venue') || get_(row, col, 'location') || ''),
-          start: when.start,
-          end: when.end,
-          guestsCanSeeOtherGuests: false,
-          guestsCanInviteOthers: false
-        }, CALENDAR_ID);
-        write_(sheet, head, col, i, made.id, made.htmlLink);
-        created++;
-      } catch (e) { log_('Row ' + (i + 1) + ': ' + e.message); }
-    }
+  if (!isPublished_(row, head.map)) {
+    if (statusCell) statusCell.clearNote();
+    rowRange.setBackground(null);
+    return;
   }
-  log_('Created ' + created + ', updated ' + updated + ', cancelled ' + cancelled + '.');
+  var bad = problems_(row, head.map);
+  if (bad.length) {
+    if (statusCell) statusCell.setNote('Not ready to publish:\n• ' + bad.join('\n• '));
+    rowRange.setBackground('#FBE9E7');
+    SpreadsheetApp.getActiveSpreadsheet().toast(bad.join('; '), 'Not ready to publish', 8);
+  } else {
+    if (statusCell) statusCell.clearNote();
+    rowRange.setBackground(null);
+  }
+}
+
+/**
+ * Creates, updates and cancels calendar events for the published rows.
+ *
+ * Idempotent on purpose, which is also the answer to "how does a to-be-confirmed event get
+ * its entry once a date is set?" — it does not need a hook. The row is skipped while it has no
+ * date, and the next run picks it up. Hourly by default; "Sync now" for immediately.
+ */
+function syncNow() {
+  var ctx = open_();
+  if (!ctx) return;
+  ensureColumns_(ctx.sheet, ctx.head, ['Calendar Event ID', 'Calendar Link']);
+  ctx = open_();                                     // re-read: columns may have been added
+
+  var created = 0, updated = 0, cancelled = 0, revived = 0;
+  var skipped = [], failed = [];
+
+  eachRow_(ctx, function (row, i) {
+    var col = ctx.map;
+    var eventId = String(get_(row, col, 'calendar_event_id') || '').trim();
+    var published = isPublished_(row, col);
+
+    // Not published: cancel the event but KEEP the id. Clearing it would mean that
+    // re-publishing built a second event and everybody already invited was left on the first.
+    if (!published) {
+      if (eventId && setStatus_(eventId, 'cancelled')) cancelled++;
+      return;
+    }
+
+    var bad = problems_(row, col);
+    if (bad.length) { skipped.push('Row ' + (i + 1) + ': ' + bad.join('; ')); return; }
+
+    // Published with no date yet. Legitimate; there is simply nothing to put in a calendar.
+    if (!iso_(get_(row, col, 'start_date'))) {
+      skipped.push('Row ' + (i + 1) + ': no date yet — will be created when one is set');
+      return;
+    }
+
+    var title = String(get_(row, col, 'title')).trim();
+    var when = times_(row, col);
+
+    if (eventId) {
+      var existing = fetch_(eventId);
+      if (existing) {
+        // Only the title, the times, and bringing it back if it had been cancelled. The
+        // organiser owns the room, the description and the guests.
+        var patch = { summary: title, start: when.start, end: when.end };
+        if (existing.status === 'cancelled') { patch.status = 'confirmed'; revived++; }
+        try {
+          Calendar.Events.patch(patch, CALENDAR_ID, eventId);
+          if (existing.status !== 'cancelled') updated++;
+        } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
+        return;
+      }
+      // The id points at nothing — deleted in Google, or the wrong calendar. Rebuild rather
+      // than failing forever on a stale id.
+      failed.push('Row ' + (i + 1) + ': the saved event was gone; a new one was created');
+    }
+
+    try {
+      var made = Calendar.Events.insert({
+        summary: title,
+        description: description_(row, col),
+        location: String(get_(row, col, 'venue') || get_(row, col, 'location') || ''),
+        start: when.start,
+        end: when.end,
+        guestsCanSeeOtherGuests: false,
+        guestsCanInviteOthers: false
+      }, CALENDAR_ID);
+      write_(ctx.sheet, ctx.head, col, i, made.id, made.htmlLink);
+      created++;
+    } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
+  });
+
+  var summary = 'Created ' + created + ', updated ' + updated
+    + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled + '.';
+  if (skipped.length) summary += '\n\nNot in the calendar yet:\n' + skipped.join('\n');
+  if (failed.length) summary += '\n\nProblems:\n' + failed.join('\n');
+  tell_(summary);
+}
+
+/* --------------------------------------------------------------- calendar io */
+
+function fetch_(eventId) {
+  try { return Calendar.Events.get(CALENDAR_ID, eventId); }
+  catch (e) { return null; }                          // 404, or a different calendar
+}
+
+function setStatus_(eventId, status) {
+  var existing = fetch_(eventId);
+  if (!existing || existing.status === status) return false;
+  try { Calendar.Events.patch({ status: status }, CALENDAR_ID, eventId); return true; }
+  catch (e) { Logger.log('Status change failed: ' + e.message); return false; }
+}
+
+/* ------------------------------------------------------------------ sheet io */
+
+function open_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('EventCalendar') || ss.getSheets()[0];
+  var values = sheet.getDataRange().getValues();
+  var head = findHeaderRow_(values);
+  if (!head) { tell_('No header row found — nothing was done.'); return null; }
+  return { sheet: sheet, values: values, head: head, map: head.map };
+}
+
+function eachRow_(ctx, fn) {
+  for (var i = ctx.head.index + 1; i < ctx.values.length; i++) {
+    if (String(get_(ctx.values[i], ctx.map, 'title') || '').trim()) fn(ctx.values[i], i);
+  }
+}
+
+function isPublished_(row, col) {
+  if (col.status === undefined) return true;          // no Status column: everything publishes
+  return String(get_(row, col, 'status') || '').trim().toLowerCase() === 'published';
 }
 
 /* ------------------------------------------------------------------ helpers */
 
 var HEADERS = {
-  status: ['status'], title: ['title', 'name'],
+  status: ['status'], type: ['type'], title: ['title', 'name'],
   start_date: ['start date'], end_date: ['end date'],
   start_time: ['start time'], end_time: ['end time'], timezone: ['timezone'],
   location: ['location', 'place'], venue: ['venue'],
