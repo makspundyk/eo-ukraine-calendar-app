@@ -81,6 +81,17 @@ function defaultGuests_() {
 var QUIET_MS = 5 * 60 * 1000;
 var PENDING_KEY = 'PENDING_UPDATES';
 
+/** The subscriber list lives on its own tab. */
+var SUBS_TAB = 'EventCalendarSubscriptions';
+var SUBS_COLUMNS = ['Email', 'Date Subscribed', 'Full Name', 'Unsubscribed', 'Token'];
+
+/**
+ * The same five minutes, for a different reason. Ticking "Invite subscribers?" mails the whole
+ * list, and there is no unsend. The tick is recorded and acted on only if it is STILL ticked
+ * five minutes later, so an accidental click can be undone by unticking it.
+ */
+var INVITE_KEY = 'PENDING_INVITES';
+
 /** Fields whose change has to reach the calendar. Anything else is the organiser's business. */
 var WATCHED = ['title', 'start_date', 'end_date', 'start_time', 'end_time', 'timezone'];
 
@@ -142,6 +153,8 @@ function onOpen() {
     .addItem('Sync now', 'syncNow')
     .addItem('Check published rows', 'checkAll')
     .addItem('Refresh attendees now', 'refreshAttendees')
+    .addSeparator()
+    .addItem('Set up subscriptions', 'setUpSubscriptions')
     .addItem('Install hourly sync', 'installTrigger')
     .addItem('Set calendar…', 'setCalendarId')
     .addItem('Set default guests…', 'setDefaultGuests')
@@ -176,7 +189,8 @@ function whichCalendar() {
 /** An hourly trigger, so nobody has to remember. Safe to run twice; it replaces itself. */
 function installTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['syncNow', 'onEditCheck', 'flushPending'].indexOf(t.getHandlerFunction()) >= 0) {
+    if (['syncNow', 'onEditCheck', 'flushPending', 'flushInvites']
+        .indexOf(t.getHandlerFunction()) >= 0) {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -186,6 +200,7 @@ function installTrigger() {
   ScriptApp.newTrigger('onEditCheck').forSpreadsheet(ss).onEdit().create();
   // Drains the quiet-period queue. Cheap: it reads one property and stops when empty.
   ScriptApp.newTrigger('flushPending').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('flushInvites').timeBased().everyMinutes(5).create();
   tell_('Done.\n\n'
     + '• Marking a row Published creates its calendar event and invites the organisers\n'
     + '• Changing a date or time updates the event about '
@@ -327,9 +342,34 @@ function handleRow_(sheet, values, head, i, touched) {
 
   // It already exists. A change to when it happens is queued rather than sent, so a person
   // editing a date, then a start time, then an end time moves the event once, not three times.
-  var wants = false;
-  for (var k = 0; k < WATCHED.length; k++) if (touched[WATCHED[k]]) wants = true;
-  if (!wants) return;
+  if (touched.invite_subscribers) {
+    if (checked_(get_(row, head.map, 'invite_subscribers'))) {
+      if (String(get_(row, head.map, 'subscribers_invited') || '').trim()) {
+        SpreadsheetApp.getActiveSpreadsheet().toast(
+          'Subscribers were already invited to this event. Nobody is invited twice.',
+          'EO Calendar', 8);
+      } else {
+        var map = pendingInvites_();
+        map[eventId] = Date.now();
+        savePendingInvites_(map);
+        SpreadsheetApp.getActiveSpreadsheet().toast(
+          'Every subscriber will be invited in about ' + Math.round(QUIET_MS / 60000)
+          + ' minutes. Untick the box before then to stop it.', 'EO Calendar', 12);
+      }
+    } else {
+      var map2 = pendingInvites_();
+      if (map2[eventId]) {
+        delete map2[eventId];
+        savePendingInvites_(map2);
+        SpreadsheetApp.getActiveSpreadsheet().toast('Cancelled — nobody was invited.',
+          'EO Calendar', 8);
+      }
+    }
+  }
+
+  var wantsWhen = false;
+  for (var w = 0; w < WATCHED.length; w++) if (touched[WATCHED[w]]) wantsWhen = true;
+  if (!wantsWhen) return;
 
   markPending_(eventId);
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -347,7 +387,9 @@ function handleRow_(sheet, values, head, i, touched) {
 function syncNow() {
   var ctx = open_();
   if (!ctx) return;
-  ensureColumns_(ctx.sheet, ctx.head, ['Calendar Event ID', 'Calendar Link', 'Attendees']);
+  ensureColumns_(ctx.sheet, ctx.head,
+    ['Calendar Event ID', 'Calendar Link', 'Attendees',
+     'Invite Subscribers?', 'Subscribers Invited At']);
   ctx = open_();                                     // re-read: columns may have been added
 
   var created = 0, updated = 0, cancelled = 0, revived = 0;
@@ -467,6 +509,148 @@ function flushPending() {
   });
   savePending_(map);
   if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
+}
+
+/* -------------------------------------------------------------- subscriptions */
+
+/** Creates the subscriptions tab, with the Unsubscribed column as a real checkbox. */
+function setUpSubscriptions() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tab = ss.getSheetByName(SUBS_TAB);
+  if (!tab) {
+    tab = ss.insertSheet(SUBS_TAB);
+    tab.getRange(1, 1, 1, SUBS_COLUMNS.length).setValues([SUBS_COLUMNS]).setFontWeight('bold');
+    tab.setFrozenRows(1);
+    tab.getRange('D2:D').insertCheckboxes();
+    tab.getRange('E:E').setNote('Written by the site. Do not edit — it is what makes an '
+      + 'unsubscribe link work.');
+    tab.setColumnWidth(1, 240); tab.setColumnWidth(3, 200);
+  }
+  tell_('"' + SUBS_TAB + '" is ready.\n\nAnyone whose Unsubscribed box is NOT ticked will be '
+    + 'invited when you tick "Invite subscribers?" on an event.');
+}
+
+/** Everyone still subscribed. Reading the tab directly, so it works with no site involved. */
+function subscribers_() {
+  var tab = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SUBS_TAB);
+  if (!tab) return [];
+  var values = tab.getDataRange().getValues();
+  if (values.length < 2) return [];
+  var head = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+  var iEmail = head.indexOf('email');
+  var iName = head.indexOf('full name');
+  var iOff = head.indexOf('unsubscribed');
+  if (iEmail < 0) return [];
+
+  var out = [];
+  for (var i = 1; i < values.length; i++) {
+    var email = String(values[i][iEmail] || '').trim();
+    if (email.indexOf('@') < 1) continue;
+    var off = iOff < 0 ? false : values[i][iOff];
+    if (off === true || String(off).trim().toLowerCase() === 'true') continue;
+    out.push({ email: email, name: iName < 0 ? '' : String(values[i][iName] || '').trim() });
+  }
+  return out;
+}
+
+/**
+ * Adds every current subscriber to one event, five minutes after the box was ticked.
+ *
+ * Appends. Anyone already on the event — the default guests, anybody who asked through the
+ * site — stays exactly as they are, with the reply they already gave.
+ */
+function inviteSubscribers_(ctx, row, i, eventId) {
+  var event = fetch_(eventId);
+  if (!event) return 0;
+
+  var already = {};
+  (event.attendees || []).forEach(function (a) {
+    if (a.email) already[String(a.email).toLowerCase()] = true;
+  });
+
+  var adding = subscribers_().filter(function (s) { return !already[s.email.toLowerCase()]; });
+  if (!adding.length) return 0;
+
+  var attendees = (event.attendees || []).slice();
+  adding.forEach(function (s) {
+    // The name is passed so Google shows a person rather than an address on the guest list.
+    var entry = { email: s.email, responseStatus: 'needsAction' };
+    if (s.name) entry.displayName = s.name;
+    attendees.push(entry);
+  });
+
+  try {
+    Calendar.Events.patch({ attendees: attendees, guestsCanSeeOtherGuests: false,
+                            guestsCanInviteOthers: false },
+                          calendarId_(), eventId, { sendUpdates: 'all' });
+  } catch (e) {
+    Logger.log('Inviting subscribers failed for ' + eventId + ': ' + e.message);
+    return 0;
+  }
+
+  var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
+  if (head && head.map.subscribers_invited !== undefined) {
+    ctx.sheet.getRange(i + 1, head.map.subscribers_invited + 1)
+      .setValue(new Date().toISOString());
+  }
+  return adding.length;
+}
+
+/** Ticked boxes waiting out their five minutes. */
+function pendingInvites_() {
+  try { return JSON.parse(
+    PropertiesService.getScriptProperties().getProperty(INVITE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function savePendingInvites_(map) {
+  PropertiesService.getScriptProperties().setProperty(INVITE_KEY, JSON.stringify(map));
+}
+
+/**
+ * Acts on ticks that have survived five minutes, and forgets ones that were unticked.
+ * Called from the same five-minute trigger that drains date changes.
+ */
+function flushInvites() {
+  var map = pendingInvites_();
+  var ids = Object.keys(map);
+  if (!ids.length) return;
+
+  var ctx = open_();
+  if (!ctx) return;
+  var invited = 0, sentFor = [];
+
+  ids.forEach(function (id) {
+    if (Date.now() - map[id] < QUIET_MS) return;      // still inside the grace period
+    delete map[id];
+
+    var found = null, foundIndex = -1;
+    eachRow_(ctx, function (row, i) {
+      if (String(get_(row, ctx.map, 'calendar_event_id') || '').trim() === id) {
+        found = row; foundIndex = i;
+      }
+    });
+    if (!found) return;
+
+    // Unticked during the five minutes, or already done: do nothing. This is the guard.
+    if (!checked_(get_(found, ctx.map, 'invite_subscribers'))) return;
+    if (String(get_(found, ctx.map, 'subscribers_invited') || '').trim()) return;
+
+    var n = inviteSubscribers_(ctx, found, foundIndex, id);
+    if (n) { invited += n; sentFor.push(String(get_(found, ctx.map, 'title')).trim()); }
+  });
+
+  savePendingInvites_(map);
+  if (invited) {
+    Logger.log('Invited ' + invited + ' subscriber(s) to: ' + sentFor.join(', '));
+    try { SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Invited ' + invited + ' subscriber(s) to ' + sentFor.join(', '), 'EO Calendar', 10);
+    } catch (e) {}
+  }
+}
+
+function checked_(v) {
+  return v === true || ['true', 'yes', 'y', '1', '✓'].indexOf(
+    String(v || '').trim().toLowerCase()) >= 0;
 }
 
 /* ------------------------------------------------------------------ attendees */
@@ -607,7 +791,9 @@ var HEADERS = {
   speaker_name: ['speaker name'], speaker_title: ['speaker title'],
   registration_url: ['registration url'],
   calendar_event_id: ['calendar event id'], calendar_link: ['calendar link'],
-  attendees: ['attendees', 'participants', 'guest list']
+  attendees: ['attendees', 'participants', 'guest list'],
+  invite_subscribers: ['invite subscribers?', 'invite subscribers'],
+  subscribers_invited: ['subscribers invited at', 'subscribers invited']
 };
 
 function findHeaderRow_(values) {
@@ -743,6 +929,11 @@ function description_(row, col) {
       + slug + (start ? '-' + start : ''), '');
   }
 
+  if (site) {
+    out.push('—');
+    out.push('Invited because you subscribed to EO Ukraine events? Stop receiving them: '
+      + site.replace(/\/+$/, '') + '/#/unsubscribe');
+  }
   out.push('—', 'Created from the EO events sheet. Edit this freely: the sync only ever '
     + 'corrects the title and the times, and will not overwrite what you write here.');
 

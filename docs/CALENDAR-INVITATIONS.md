@@ -328,6 +328,71 @@ keeps working if any of the above is not set up.
 
 ---
 
+## Subscriptions
+
+A second tab, **`EventCalendarSubscriptions`**, holds the list. **EO Calendar → Set up
+subscriptions** creates it, with `Unsubscribed` as a real checkbox:
+
+| Email | Date Subscribed | Full Name | Unsubscribed | Token |
+|---|---|---|---|---|
+| `anna@example.com` | `2026-09-02T…` | Anna Koval | ☐ | `k3f9…` |
+
+**Anyone whose `Unsubscribed` box is not ticked gets invited.** Ticking it by hand works exactly
+as well as clicking the link — which is what a secretary will actually do when somebody asks
+them in person.
+
+`Token` is the only column nobody types. It is what makes an unsubscribe link safe: without it
+a link would have to carry an address, and anyone could remove anyone by editing the URL — and
+that link travels inside a calendar invitation, which gets forwarded.
+
+### How people join
+
+* **The form at the foot of the events page** — name and address, "Keep me posted"
+* **The tickbox on an invitation** — *"Invite me to future events too"*, ticked by default. It
+  is a separate action from the invitation, attempted afterwards, so it can never make the
+  invitation the member actually asked for fail
+
+The `.ics` feed is still offered next to the form for anyone who would rather give no address
+at all.
+
+### Inviting the list to an event
+
+Two new columns on the events tab:
+
+| Column | |
+|---|---|
+| `Invite Subscribers?` | a checkbox. Tick it when the event is ready |
+| `Subscribers Invited At` | written by the script, and the reason nobody is ever invited twice |
+
+**Ticking the box does not send anything for five minutes.** There is no unsend on a mailing to
+the whole list, so the tick is recorded and acted on only if it is *still* ticked five minutes
+later. Untick it before then and nothing happens — the sheet says "Cancelled — nobody was
+invited."
+
+When it fires, every subscriber who has not unsubscribed is **appended** to the event.
+Everybody already on it — the default guests, anyone who asked through the site — keeps the
+reply they already gave. Their `Full Name` is sent along, so the guest list shows people rather
+than addresses.
+
+### Leaving
+
+Every invitation carries a line pointing at `/#/unsubscribe`. That page cannot identify anyone
+on its own — **a calendar invitation is shared by every guest, so it cannot carry one person's
+token** — so it explains where their personal link is rather than asking for an address, which
+would let anyone remove anyone.
+
+The personal link, `/#/unsubscribe/<token>`, is shown once: in the confirmation, to the person
+who just gave us the address. That is the only moment we know for certain who they are.
+
+### One more scope
+
+Writing to the sheet needs `https://www.googleapis.com/auth/spreadsheets` added to the same
+domain-wide delegation entry. Reading uses `spreadsheets.readonly`; there is no narrower write
+scope than "all spreadsheets this user can reach", so authorise it deliberately.
+
+Until it is authorised, subscribing answers *"Subscriptions are not switched on yet"* and the
+site keeps offering the `.ics` feed, which needs nothing.
+
 ## Testing it
 
 ```bash

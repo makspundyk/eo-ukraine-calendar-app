@@ -20,7 +20,8 @@ const Logger = { log() {} }; const SpreadsheetApp = { getActiveSpreadsheet: () =
 const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
-  + 'description_, durationLabel_, minutesBetween_, attendeeLines_ };'));
+  + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
+  + 'pendingInvites_, savePendingInvites_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -52,6 +53,20 @@ check('an evening event ending past midnight rolls to the next day',
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime.startsWith('2026-09-17'),
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime);
 check('single-digit hours are padded', mod.addMinutes_('09:00', 90) === '10:30');
+
+console.log('\nthe five-minute guard on "Invite subscribers?"');
+globalThis.__props = {};
+check('a Sheets checkbox reads as ticked', mod.checked_(true) && mod.checked_('TRUE'));
+check('blank means not ticked', !mod.checked_('') && !mod.checked_(false) && !mod.checked_(undefined));
+mod.savePendingInvites_({ 'evt-1': Date.now() });
+check('a fresh tick is inside the grace period',
+  Date.now() - mod.pendingInvites_()['evt-1'] < mod.QUIET_MS);
+mod.savePendingInvites_({ 'evt-1': Date.now() - mod.QUIET_MS - 1 });
+check('a tick older than five minutes is due',
+  Date.now() - mod.pendingInvites_()['evt-1'] >= mod.QUIET_MS);
+mod.savePendingInvites_({});
+check('unticking removes it, so nobody is invited', Object.keys(mod.pendingInvites_()).length === 0);
+globalThis.__props = {};
 
 console.log('\nthe guest list written back into the sheet');
 const A = (attendees) => mod.attendeeLines_({ attendees });
@@ -105,6 +120,8 @@ check('links back to the event page',
   body.includes('https://eo.example/#/event/forum-test-drive-september-2026-09-16'),
   body.match(/Full details:.*/)?.[0]);
 check('tells the organiser her edits are safe', body.includes('will not overwrite'));
+check('carries a way out for anyone invited by subscription',
+  body.includes('/#/unsubscribe'), body.slice(-200));
 check('no triple blank lines', !/\n\n\n/.test(body));
 
 const multi = mod.description_(drow({ Title: 'Retreat', 'Start Date': '2026-11-10',

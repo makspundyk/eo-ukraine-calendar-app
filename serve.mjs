@@ -14,6 +14,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, dirname } from 'node:path';
 import { getCalendar, readConfig, resolveCalendarEventId } from './lib/calendar.mjs';
 import { addAttendee } from './lib/attend.mjs';
+import { subscribe, unsubscribe } from './lib/subscriptions.mjs';
 import { getFeed } from './lib/ics-feed.mjs';
 
 const HERE = dirname(new URL(import.meta.url).pathname);
@@ -92,15 +93,57 @@ const HEADERS = await globalHeaders();
 createServer(async (req, res) => {
   let p = new URL(req.url, 'http://x').pathname;
 
+  const readBody = () => new Promise((r) => { let d = ''; req.on('data', (c) => { d += c; });
+    req.on('end', () => { try { r(JSON.parse(d)); } catch { r({}); } }); });
+
+  if (p === '/api/subscribe' && req.method === 'POST') {
+    const input = await readBody();
+    let body;
+    try {
+      const out = await subscribe(ENV, { email: input.email, name: input.name });
+      if (out.log) console.log(`  subscribe: ${out.log}`);
+      body = out.ok
+        ? { ok: true, message: out.message,
+            unsubscribe: out.token ? `/#/unsubscribe/${out.token}` : '' }
+        : { ok: false, reason: out.reason, message: out.message };
+    } catch (err) {
+      console.log(`  subscribe: [${err.reason || 'failed'}] ${err.message}`);
+      body = { ok: false, reason: err.reason || 'failed',
+               message: err.publicMessage || 'That did not work.' };
+    }
+    res.writeHead(200, { ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify(body, null, 2));
+  }
+
+  if (p === '/api/unsubscribe' && req.method === 'POST') {
+    const input = await readBody();
+    let body;
+    try {
+      const out = await unsubscribe(ENV, input.token);
+      body = { ok: out.ok, message: out.message, reason: out.reason };
+    } catch (err) {
+      console.log(`  unsubscribe: [${err.reason || 'failed'}] ${err.message}`);
+      body = { ok: false, reason: err.reason || 'failed',
+               message: err.publicMessage || 'That did not work.' };
+    }
+    res.writeHead(200, { ...HEADERS, 'content-type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify(body, null, 2));
+  }
+
   if (p === '/api/attend' && req.method === 'POST') {
-    const raw = await new Promise((r) => { let d = ''; req.on('data', (c) => { d += c; });
-      req.on('end', () => r(d)); });
-    let input = {};
-    try { input = JSON.parse(raw); } catch { /* handled by the validator */ }
+    const input = await readBody();
     const match = await resolveCalendarEventId(ENV, String(input.event ?? '')).catch(() => null);
     const out = await addAttendee(ENV, { calendarEventId: match?.calendarEventId,
                                         email: input.email });
     console.log(`  ${out.logLine}`);
+    if (out.body.ok && input.subscribe) {
+      try {
+        const sub = await subscribe(ENV, { email: input.email });
+        if (sub.ok) out.body.subscribed = true;
+        if (sub.ok && sub.token) out.body.unsubscribe = `/#/unsubscribe/${sub.token}`;
+        else if (!sub.ok) console.log(`  attend: subscribe declined [${sub.reason}]`);
+      } catch (err) { console.log(`  attend: subscribe failed [${err.reason}]`); }
+    }
     res.writeHead(out.status, { ...HEADERS, 'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store' });
     return res.end(JSON.stringify(out.body, null, 2));

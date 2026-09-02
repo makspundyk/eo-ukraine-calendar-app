@@ -151,10 +151,13 @@ const addToCalendar = (ev) => {
         <input type="email" name="email" required autocomplete="email"
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="addcal-btn primary">Send it to me</button>
+        <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
+          Invite me to future events too</label>
       </form>
       <span class="addcal-note" data-attend-note>The organiser's own event, so the room and any
-        later change reach you automatically. Your address is used for this invitation and is
-        not stored by this site.</span>
+        later change reach you automatically. Untick the box and your address is used for this
+        invitation only; leave it ticked and it joins the chapter's list, which you can leave
+        from any invitation.</span>
     </div>`;
   }
 
@@ -204,18 +207,22 @@ export function wireAttend() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ event: form.dataset.attend,
-                               email: form.querySelector('input').value }),
+                               email: form.querySelector('input[type=email]').value,
+                               subscribe: form.querySelector('[name=subscribe]')?.checked }),
       });
       const body = await res.json();
       note.className = `addcal-note ${body.ok ? 'good' : 'bad'}`;
       // The link is offered on success because the email is not guaranteed: a personal Gmail
       // account may not auto-add an invitation from a shared calendar, and it can land in
       // spam. Saying "sent" and stopping there leaves somebody staring at an empty calendar.
-      note.innerHTML = body.ok && body.link
-        ? `${esc(body.message)} <a href="${esc(body.link)}" target="_blank" rel="noopener">`
-          + 'Open it in Google Calendar</a> if it does not appear.'
-        : esc(body.message || (body.ok
-            ? 'Done.' : 'That did not work. Try again in a moment.'));
+      note.innerHTML = body.ok
+        ? [esc(body.message),
+           body.link ? `<a href="${esc(body.link)}" target="_blank" rel="noopener">`
+                       + 'Open it in Google Calendar</a> if it does not appear.' : '',
+           body.subscribed ? 'You are also on the list for future events'
+             + (body.unsubscribe ? ` — <a href="${esc(body.unsubscribe)}">leave it</a>` : '')
+             + '.' : ''].filter(Boolean).join(' ')
+        : esc(body.message || 'That did not work. Try again in a moment.');
       if (body.ok) form.remove();
     } catch {
       note.textContent = 'That did not work. Try again in a moment.';
@@ -276,9 +283,13 @@ function primaryAction(ev) {
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="register">Send me the invitation
           <span class="arr" aria-hidden="true">→</span></button>
+        <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
+          Invite me to future events too</label>
       </form>
       <p class="micro" data-attend-note>The organiser's own event, so the room and any later
-        change reach you automatically. Your address is not stored by this site.</p>`;
+        change reach you automatically. Untick the box and your address is used for this
+        invitation only; leave it ticked and it joins the chapter's list, which you can leave
+        from any invitation.</p>`;
   }
   return `
     <a class="register" href="${e(googleUrl(ev, { origin: location.origin }))}"

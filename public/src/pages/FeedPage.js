@@ -81,6 +81,38 @@ export async function load(route) {
  */
 const PAGE = 12;
 
+/** Posts the address and reports back in place. Bound after render; there are no inline handlers. */
+export function wireSubscribe() {
+  const form = document.querySelector('[data-subscribe]');
+  if (!form) return;
+  const note = document.querySelector('[data-subscribe-note]');
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: form.email.value, name: form.name.value }),
+      });
+      const body = await res.json();
+      note.className = `subscribe-note ${body.ok ? 'good' : 'bad'}`;
+      // The unsubscribe link is shown once, here, to the person who just gave us the address.
+      // It is the only place we can put it that is certainly them.
+      note.innerHTML = body.ok
+        ? `${e(body.message)} You will be invited to each new event.`
+          + (body.unsubscribe
+             ? ` <a href="${e(body.unsubscribe)}">Leave the list</a> whenever you like.` : '')
+        : e(body.message || 'That did not work. Try again in a moment.');
+      if (body.ok) form.remove();
+    } catch {
+      note.className = 'subscribe-note bad';
+      note.textContent = 'That did not work. Try again in a moment.';
+    } finally { button.disabled = false; }
+  });
+}
+
 /** Month headers are emitted mid-list, so a page has to know what the previous page ended on. */
 function renderSlots(events, from, to) {
   let lastMonth = from > 0 ? monthYear(events[from - 1].start) : null;
@@ -98,7 +130,9 @@ function renderSlots(events, from, to) {
  * Appends the next page when the sentinel comes into view. Called by main.js after every
  * render; `mount` is the seam a framework would replace with a lifecycle hook.
  */
+/** The subscribe form on the feed, and the paging sentinel. */
 export function mount({ events }) {
+  wireSubscribe();
   const feed = document.querySelector('.feed');
   const sentinel = document.querySelector('.feed-more');
   if (!feed || !sentinel || events.length <= PAGE) return;
@@ -149,11 +183,20 @@ export function render({ events, tbc, q, counts, facets }) {
     </div>` : ''}
 
   <div class="subscribe">
-    <div>
-      <b>Subscribe to this calendar</b>
-      <span>Every event lands in your own calendar, and stays right when a date or a room
-        changes. One click, then never again.</span>
+    <div class="subscribe-say">
+      <b>Never miss an event</b>
+      <span>Give us your address and you will be invited to each new event as it is announced —
+        straight into your calendar, with the room and any later change. Leave whenever you
+        like; every invitation carries the way out.</span>
     </div>
-    <a class="register ghost sm" href="/api/calendar.ics">Subscribe</a>
+    <form class="subscribe-form" data-subscribe>
+      <input type="text" name="name" autocomplete="name" placeholder="Your name" />
+      <input type="email" name="email" required autocomplete="email"
+             placeholder="your@email.com" aria-label="Your email address" />
+      <button type="submit" class="register sm">Keep me posted
+        <span class="arr" aria-hidden="true">→</span></button>
+    </form>
+    <p class="subscribe-note" data-subscribe-note>Prefer to subscribe the calendar itself?
+      <a href="/api/calendar.ics">Take the feed</a> instead — no address needed.</p>
   </div>`;
 }

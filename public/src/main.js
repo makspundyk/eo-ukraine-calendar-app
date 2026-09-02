@@ -6,10 +6,12 @@ import { parse } from './router.js';
 import * as FeedPage from './pages/FeedPage.js';
 import * as ListPage from './pages/ListPage.js';
 import * as EventPage from './pages/EventPage.js';
+import * as UnsubscribePage from './pages/UnsubscribePage.js';
 import { escape as e } from './format.js';
 import { source } from './api/http.js';
 
-export const PAGES = { feed: FeedPage, list: ListPage, event: EventPage };
+export const PAGES = { feed: FeedPage, list: ListPage, event: EventPage,
+                       unsubscribe: UnsubscribePage };
 
 const app = document.getElementById('app');
 let current = null;
@@ -73,7 +75,7 @@ async function navigate(route) {
       document.getElementById('page').innerHTML = page.render(d);
       page.mount?.(d);            // the repaint dropped the listeners; put them back
     } });
-    if (route.name === 'event') window.scrollTo({ top: 0, behavior: 'instant' });
+    if (route.name !== 'feed') window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (err) {
     app.innerHTML = shell(route);
     document.getElementById('page').innerHTML = `
