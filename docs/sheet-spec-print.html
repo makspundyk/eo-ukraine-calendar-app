@@ -161,7 +161,7 @@
     <p class="eyebrow">EO Ukraine · community calendar</p>
     <h1>The events sheet</h1>
     <p class="lede">One tab. One row per event. Row&nbsp;1 is the header. Twenty-two columns,
-      three of them required — filled by hand, so it is built to be short.</p>
+      two of them required — filled by hand, so it is built to be short.</p>
 
     <div class="rules">
       <div class="rule"><i>1</i><p>The script reads <b>by header name, not by position</b>.
@@ -513,13 +513,16 @@ The first three steps to take this month</div>
 
   <div class="field" id="c20">
     <div class="fhead"><span class="fnum">20</span><span class="fname">Registration URL</span>
-      <span class="pill req">Required</span></div>
+      <span class="pill rec">Recommended</span></div>
     <p class="fwhat">The full <code>https://</code> link that registers a member. It sits behind
       every Register button — on the feed, the list and the event page.</p>
+    <div class="note n"><b>Optional.</b> Events are often announced before registration opens,
+      and some never have a form at all. Leave it empty and the button becomes <b>Add to Google
+      Calendar</b> — or, once the event has a calendar entry, the invitation form. It is never
+      a button that goes nowhere.</div>
     <ul>
       <li>An EO registration page, an Eventbrite link, a Google Form, a Typeform: all fine</li>
-      <li><b>Registration not open yet</b> → point it at the page members should watch, or
-        leave the row as <code>Draft</code> until it is</li>
+      <li><b>Registration not open yet</b> → leave it empty and fill it in when it opens</li>
       <li>A <code>mailto:</code> address works, but a form is better — you get the attendee
         list for free</li>
     </ul>

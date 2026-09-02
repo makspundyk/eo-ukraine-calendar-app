@@ -1,7 +1,7 @@
 # The events sheet — column standard
 
 One tab. One row per event. Row 1 is the header. Filled by hand, so the standard is built to
-be short: **22 columns, three of them required.**
+be short: **22 columns, two of them required.**
 
 ### Three rules the rest rests on
 
@@ -93,7 +93,7 @@ never required — reach for it only if permanent links matter to you.
 | 17 | `Speaker Title` | | text |
 | 18 | `Speaker Bio` | | text |
 | 19 | `Guests Welcome` | | **checkbox** |
-| 20 | `Registration URL` | **required** | text |
+| 20 | `Registration URL` | recommended | text |
 | 21 | `Image URL` | recommended | text |
 | 22 | `Notes` | | text |
 
@@ -345,11 +345,14 @@ known" — a checkbox has no third state.
 ### 20. `Registration URL`
 
 The full `https://` link that registers a member. It is behind every Register button, on the
-feed, the list and the event page — the calendar exists to produce this click.
+feed, the list and the event page.
+
+**Optional.** Events are often announced before registration opens, and some never have a form
+at all. Leave it empty and the button becomes **Add to Google Calendar** — or, once the event
+has a calendar entry, the invitation form. It is never a button that goes nowhere.
 
 - An EO registration page, an Eventbrite link, a Google Form, a Typeform: all fine
-- Registration not open yet → point it at the page members should watch, or leave the row as
-  `Draft` until it is
+- Registration not open yet → leave it empty and fill it in when it opens
 - A `mailto:` address works, but a form is better — you will get the attendee list for free
 
 ### 21. `Image URL`
