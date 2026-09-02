@@ -39,7 +39,7 @@ if (!env.GOOGLE_SPREADSHEET_ID) skip('GOOGLE_SPREADSHEET_ID is not set — skipp
 else {
   try {
     const values = await fetchSheetValues({ ...creds, spreadsheetId: env.GOOGLE_SPREADSHEET_ID,
-      range: env.GOOGLE_SHEET_RANGE || 'EventCalendar!A1:V9999' });
+      range: env.GOOGLE_SHEET_RANGE || 'EventCalendar' });
     const { events, issues } = normalizeRows(values);
     ok(`read ${values.length} rows → ${events.length} publishable events`);
     if (issues.length) console.log(`      ${issues.length} data issues; first: ${issues[0].kind} row ${issues[0].row}`);

@@ -96,10 +96,11 @@ Event ids are `title-slug-YYYY-MM-DD`, computed from the whole set of rows at on
 than row by row, so re-sorting the sheet can never move a link from one event to another. An
 optional `Slug` column overrides it. See [`docs/SHEET.md`](docs/SHEET.md).
 
-**The range defaults to `EventCalendar!A1:V9999`, not `A3:V9999`.** This project reads the
-sheet *by header name* (rule 1 of [`docs/SHEET.md`](docs/SHEET.md)), so the header row has to
-be inside the range — `A3` would cut it off and there would be nothing to map columns by. The
-parser locates the header wherever it sits, so a title row above it is fine.
+**The range defaults to the bare tab name, `EventCalendar`** — the whole used range, with no
+first row and no last column to outgrow. Both bounds have bitten already: `A3:…` cuts off the
+header row this project maps columns by, and `…:V9999` silently hid two columns the moment the
+Apps Script appended them at W and X. A range with an end column is a bug waiting for somebody
+to add a column.
 
 ### Prerequisites
 

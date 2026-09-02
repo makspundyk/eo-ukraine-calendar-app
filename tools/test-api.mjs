@@ -14,14 +14,15 @@ const check = (name, cond, detail = '') => {
 };
 
 const HEADER = ['Status','Type','Title','Start Date','Location','Summary','Description',
-                'Highlights','Speaker Bio','Registration URL','Notes'];
+                'Highlights','Speaker Bio','Registration URL','Notes','Calendar Event ID'];
 const year = new Date().getUTCFullYear();
 const rows = [];
 for (let i = 0; i < 30; i++) {
   rows.push(['Published', 'Social', `Event ${i}`,
     `${i < 20 ? year + 1 : year - 1}-06-${String((i % 28) + 1).padStart(2, '0')}`,
     'Kyiv', `Summary ${i}`, `<p>A long description for event ${i}.</p>`.repeat(6),
-    'One\nTwo', 'A biography.', 'https://example.org/r', 'internal note']);
+    'One\nTwo', 'A biography.', 'https://example.org/r', 'internal note',
+    i < 5 ? 'gcal_' + i : '']);
 }
 
 let calls = [];
@@ -80,6 +81,19 @@ check(`a list record is ${saved}% smaller than the full one `
       `${lightOne} vs ${fullOne}`);
 console.log(`     20 upcoming events: ${Math.round(lightOne * 20 / 1024)} KB sent, `
           + `${Math.round(fullOne * 20 / 1024)} KB withheld until an event is opened`);
+
+console.log('\nthe calendar event id never reaches the browser');
+const withId = up.body.events.find((e) => e.invitable);
+check('a row with a Calendar Event ID is marked invitable', !!withId);
+check('a row without one is not',
+  up.body.events.some((e) => e.invitable === false));
+check('the LIST never carries the id',
+  !JSON.stringify(up.body).includes('gcal_'), 'found gcal_ in the list payload');
+const d2 = await getCalendar(env, { eventId: withId.id });
+check('the DETAIL never carries the id either',
+  !JSON.stringify(d2.body).includes('gcal_'), 'found gcal_ in the detail payload');
+check('...and the detail still says it is invitable, so opening an event keeps the form',
+  d2.body.event.invitable === true, JSON.stringify(Object.keys(d2.body.event)));
 
 console.log('\nGoogle is called as little as possible');
 calls = [];

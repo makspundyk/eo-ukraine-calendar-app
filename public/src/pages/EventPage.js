@@ -131,19 +131,6 @@ const row = (ic, label, value, sub = '') => (value ? `
 const addToCalendar = (ev) => {
   if (!ev.start) return '';
 
-  // The organiser keeps one real event, and this opens it. Whatever they change afterwards —
-  // the room, the time, the agenda — everyone sees, because there is only one event.
-  if (ev.calendar_url) {
-    return `
-    <div class="addcal">
-      <span class="addcal-label">${icon('cal')} Add to your calendar</span>
-      <a class="addcal-btn primary" href="${e(ev.calendar_url)}" target="_blank"
-         rel="noopener">Open the calendar invitation</a>
-      <span class="addcal-note">This is the organiser's event, so any later change to the
-        room or the time reaches you automatically.</span>
-    </div>`;
-  }
-
   // The organiser has a real event and the site can put the member ON it. One field, because
   // the address is the only thing we do not already know, and it is not stored anywhere here.
   if (ev.invitable) {
@@ -158,6 +145,20 @@ const addToCalendar = (ev) => {
       <span class="addcal-note" data-attend-note>The organiser's own event, so the room and any
         later change reach you automatically. Your address is used for this invitation and is
         not stored by this site.</span>
+    </div>`;
+  }
+
+  // A link to the organiser's event, but no way to put the member ON it. Second best: they
+  // can at least see it. Checked AFTER `invitable`, because being able to invite somebody
+  // beats merely being able to show them the page — a row that has both should invite.
+  if (ev.calendar_url) {
+    return `
+    <div class="addcal">
+      <span class="addcal-label">${icon('cal')} Add to your calendar</span>
+      <a class="addcal-btn primary" href="${e(ev.calendar_url)}" target="_blank"
+         rel="noopener">Open the calendar invitation</a>
+      <span class="addcal-note">This is the organiser's event, so any later change to the
+        room or the time reaches you automatically.</span>
     </div>`;
   }
 
