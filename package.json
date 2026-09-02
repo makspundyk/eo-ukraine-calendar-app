@@ -2,13 +2,16 @@
   "name": "eo-ukraine-calendar-app",
   "private": true,
   "type": "module",
-  "description": "EO Ukraine community events calendar — a static site fed from a Google Sheet.",
+  "description": "EO Ukraine community events calendar \u2014 a static site fed from a Google Sheet.",
   "scripts": {
     "dev": "node serve.mjs",
+    "dev:cf": "node tools/dev-cf.mjs",
     "data": "python3 data/normalize.py",
+    "test": "node tools/test-parser.mjs",
     "shots": "node tools/shots.mjs"
   },
   "devDependencies": {
-    "playwright": "^1.62.1"
+    "playwright": "^1.62.1",
+    "wrangler": "^4.128.0"
   }
 }

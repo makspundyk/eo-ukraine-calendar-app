@@ -310,3 +310,11 @@
 .served-warning{max-width:520px;margin:15vh auto;padding:32px}
 .served-warning h1{font-size:22px;margin:0 0 12px}
 .served-warning p{color:var(--ink-2);line-height:1.6}
+
+/* --- demo-data banner ---------------------------------------------------
+   Shown only when the sheet could not be read. Deliberately quiet: the site is working, the
+   data is just not live, and an alarming red bar would train people to ignore it. */
+.banner{background:var(--warn-soft,#FBF0E4);border-bottom:1px solid var(--rule-2)}
+.banner .wrap{display:flex;gap:var(--sp-3);align-items:baseline;flex-wrap:wrap;
+  padding-top:10px;padding-bottom:10px;font-size:13.5px;color:var(--ink-2)}
+.banner b{color:var(--warn,#8A4B10);font-weight:600}

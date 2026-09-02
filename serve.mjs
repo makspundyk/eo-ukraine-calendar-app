@@ -1,13 +1,75 @@
+/**
+ * Local development server.
+ * ===========================================================================
+ * Serves `public/` exactly as Cloudflare Pages will, and implements /api/calendar with the
+ * same lib/ that functions/api/calendar.js uses. The only difference between here and
+ * production is where the secrets come from: this reads `.env`, Cloudflare reads the Pages
+ * environment. That is the whole point — the code path you debug locally is the one that runs.
+ *
+ *   CLOUDFLARE_ON=0   .env, this file          (npm run dev)
+ *   CLOUDFLARE_ON=1   Pages env, the Function  (deployed)
+ */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
-// Serve exactly what Cloudflare Pages serves — the output directory, nothing above it.
-const ROOT = new URL('./public/', import.meta.url).pathname;
+import { extname, join, normalize, resolve, dirname } from 'node:path';
+import { getCalendar, readConfig } from './lib/calendar.mjs';
+
+const HERE = dirname(new URL(import.meta.url).pathname);
+const ROOT = join(HERE, 'public');
+const PORT = Number(process.env.PORT ?? 4100);
+
+const T = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
+  '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml' };
 
 /**
- * Apply `public/_headers` locally too. Parsing it here rather than restating the rules keeps
- * dev and production honest: a CSP that breaks the fonts breaks them on localhost first.
- * Only the global `/*` block is applied — per-path caching rules do not matter in dev.
+ * A .env reader rather than a dependency. It handles the two things that actually come up:
+ * quoted values, and a private key pasted as one line with literal \n in it.
+ */
+async function loadEnv() {
+  let text;
+  try { text = await readFile(join(HERE, '.env'), 'utf8'); }
+  catch { return {}; }
+
+  const out = {};
+  for (const line of text.split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq < 1) continue;
+    let value = t.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    out[t.slice(0, eq).trim()] = value;
+  }
+  return out;
+}
+
+/**
+ * Convenience the deployed side does not have and must never have: point
+ * GOOGLE_APPLICATION_CREDENTIALS at the downloaded service-account JSON — kept OUTSIDE this
+ * repository — and the email and key are read from it, so the private key never has to be
+ * duplicated into a second file. GOOGLE_PRIVATE_KEY set explicitly always wins.
+ */
+async function withCredentialsFile(env) {
+  const path = env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!path || (env.GOOGLE_PRIVATE_KEY && env.GOOGLE_SERVICE_ACCOUNT_EMAIL)) return env;
+  try {
+    const json = JSON.parse(await readFile(resolve(HERE, path), 'utf8'));
+    return {
+      ...env,
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: env.GOOGLE_SERVICE_ACCOUNT_EMAIL || json.client_email,
+      GOOGLE_PRIVATE_KEY: env.GOOGLE_PRIVATE_KEY || json.private_key,
+    };
+  } catch (err) {
+    console.warn(`  ! GOOGLE_APPLICATION_CREDENTIALS (${path}): ${err.message}`);
+    return env;
+  }
+}
+
+/**
+ * Apply `public/_headers` locally too. Parsing it rather than restating the rules keeps dev
+ * and production honest: a CSP that breaks the fonts breaks them on localhost first. Only the
+ * global `/*` block is applied — per-path caching does not matter in development.
  */
 async function globalHeaders() {
   try {
@@ -20,12 +82,23 @@ async function globalHeaders() {
       .filter(([, v]) => v));
   } catch { return {}; }
 }
+
+const FILE_ENV = await withCredentialsFile(await loadEnv());
+const ENV = { ...FILE_ENV, ...process.env };     // a shell variable beats the file
 const HEADERS = await globalHeaders();
-const PORT = Number(process.env.PORT ?? 4100);
-const T = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
-  '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml' };
+
 createServer(async (req, res) => {
-  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p = new URL(req.url, 'http://x').pathname;
+
+  if (p === '/api/calendar') {
+    const { body, logLine, issues } = await getCalendar(ENV);
+    console.log(`  ${logLine}`);
+    for (const i of issues.slice(0, 20)) console.log(`    row ${i.row} ${i.kind} — ${i.detail}`);
+    res.writeHead(200, { ...HEADERS,
+      'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify(body, null, 2));
+  }
+
   if (p === '/' || p.endsWith('/')) p += 'index.html';
   try {
     const body = await readFile(join(ROOT, normalize(p).replace(/^(\.\.[/\\])+/, '')));
@@ -34,4 +107,10 @@ createServer(async (req, res) => {
                          'cache-control': 'no-store' });
     res.end(body);
   } catch { res.writeHead(404).end('404'); }
-}).listen(PORT, () => console.log(`\n  EO events  ->  http://localhost:${PORT}\n`));
+}).listen(PORT, () => {
+  const c = readConfig(ENV);
+  const ready = c.email && c.privateKey && c.spreadsheetId;
+  console.log(`\n  EO events  ->  http://localhost:${PORT}`);
+  console.log(`  CLOUDFLARE_ON=${c.cloudflare ? 1 : 0}  ·  live sheet: ${
+    ready ? `configured (${c.range})` : 'not configured — the demo data will be used'}\n`);
+});

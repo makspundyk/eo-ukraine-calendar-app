@@ -29,6 +29,9 @@
   --t-social:#B03A5B;   --t-social-soft:#FBE9EE;
   --t-other:#6B6B6B;    --t-other-soft:#EFEFEF;
 
+  /* used only by the demo-data banner */
+  --warn:#8A4B10; --warn-soft:#FBF0E4;
+
   --rule:rgba(20,19,17,.10);
   --rule-2:rgba(20,19,17,.06);
 

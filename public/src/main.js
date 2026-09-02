@@ -7,6 +7,7 @@ import * as FeedPage from './pages/FeedPage.js';
 import * as ListPage from './pages/ListPage.js';
 import * as EventPage from './pages/EventPage.js';
 import { escape as e } from './format.js';
+import { source } from './api/http.js';
 
 export const PAGES = { feed: FeedPage, list: ListPage, event: EventPage };
 
@@ -26,7 +27,22 @@ const shell = (route) => `
       </nav>
     </div>
   </header>
+  ${demoNotice()}
   <main><div class="wrap" id="page"></div></main>`;
+
+/**
+ * When the sheet could not be read, the calendar still works — it shows the demo data. Saying
+ * so is not optional: a chapter administrator looking at last season's events with no warning
+ * would reasonably conclude the site is fine, and the broken sheet would go unnoticed for
+ * weeks. It names the reason, because "something went wrong" is not actionable.
+ */
+const demoNotice = () => (source.kind !== 'mock' ? '' : `
+  <div class="banner" role="status">
+    <div class="wrap">
+      <b>Showing demo events.</b>
+      <span>${e(source.message || 'The live calendar could not be read from the sheet.')}</span>
+    </div>
+  </div>`);
 
 const skeleton = `<div class="empty"><b>Loading the calendar…</b></div>`;
 

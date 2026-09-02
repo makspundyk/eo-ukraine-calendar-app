@@ -1,3 +1,15 @@
 node_modules/
 .DS_Store
 *.log
+
+# Wrangler's local miniflare state. It caches request and response bodies on disk,
+# so it is never committed.
+.wrangler/
+
+# Local credentials. Nothing here is ever committed.
+# The service-account JSON must stay OUTSIDE this repository entirely.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
