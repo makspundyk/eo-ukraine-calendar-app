@@ -7,7 +7,13 @@ node_modules/
 .wrangler/
 
 # Local credentials. Nothing here is ever committed.
-# The service-account JSON must stay OUTSIDE this repository entirely.
+#
+# secrets/ holds the Google service-account JSON. It is ignored wholesale — only the
+# README explaining what belongs there is tracked. If you ever see a *.json under
+# secrets/ appear in `git status`, stop and fix this file before committing anything.
+secrets/*
+!secrets/README.md
+
 .env
 .env.*
 !.env.example

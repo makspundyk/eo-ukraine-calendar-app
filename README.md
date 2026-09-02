@@ -68,9 +68,12 @@ parser locates the header wherever it sits, so a title row above it is fine.
 3. The sheet **shared with the service account address as Viewer**. Nothing else grants access
    — the sheet must not be made public and "Publish to web" must not be used.
 
-**The service-account JSON must never be committed, and must not live inside this repository.**
-Keep it wherever you downloaded it and point `.env` at it, or paste the key into `.env`. Both
-`.env` and `.dev.vars` are gitignored.
+**The service-account JSON must never be committed.** It lives in `secrets/`, which is
+gitignored wholesale — see [`secrets/README.md`](secrets/README.md). `.env`, `.dev.vars` and
+`.wrangler/` are ignored too. Only `public/` is ever deployed, and `secrets/` is not inside it.
+
+If a key is ever committed by accident, revoke it in Google Cloud and issue a new one; deleting
+the file in a later commit does not help, because the history is already on GitHub.
 
 ## Local setup
 
@@ -80,13 +83,13 @@ cp .env.example .env      # then fill it in
 npm run dev               # http://localhost:4100
 ```
 
-`.env` accepts the private key directly, or a path to the downloaded JSON **outside the repo**:
+`.env` accepts the private key directly, or a path to the downloaded JSON:
 
 ```
-GOOGLE_APPLICATION_CREDENTIALS=/Users/you/Downloads/service-account.json
+GOOGLE_APPLICATION_CREDENTIALS=./secrets/google-service-account.json
 ```
 
-That convenience exists locally only; Cloudflare always uses the secrets.
+That convenience exists locally only; Cloudflare always uses its own secrets.
 
 | Command | |
 |---|---|
