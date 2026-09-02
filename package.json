@@ -7,7 +7,7 @@
     "dev": "node serve.mjs",
     "dev:cf": "node tools/dev-cf.mjs",
     "data": "python3 data/normalize.py",
-    "test": "node tools/test-parser.mjs && node tools/test-api.mjs && node tools/test-ics.mjs && node tools/test-attend.mjs && node tools/test-subscriptions.mjs && node tools/test-apps-script.mjs",
+    "test": "node tools/test-parser.mjs && node tools/test-api.mjs && node tools/test-ics.mjs && node tools/test-timezone.mjs && node tools/test-attend.mjs && node tools/test-subscriptions.mjs && node tools/test-messages.mjs && node tools/test-apps-script.mjs",
     "shots": "node tools/shots.mjs",
     "check": "node tools/check-google.mjs"
   },

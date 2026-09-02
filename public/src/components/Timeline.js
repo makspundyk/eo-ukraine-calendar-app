@@ -8,7 +8,7 @@
  * could not give it, a dot per event coloured by type, and a sticky month header — which is
  * what tells you where you are once you have scrolled past the top.
  */
-import { escape as e, dayNum, dow, monthYear } from '../format.js';
+import { escape as e, dayNum, dow, monthYear, displayDate } from '../format.js';
 
 export const monthHeader = (iso) => `
   <div class="month">
@@ -19,5 +19,5 @@ export const monthHeader = (iso) => `
 export const slotRail = (ev) => `
   <div class="slot-rail">
     <span class="dot ${e(ev.kind)}"></span>
-    <span class="when"><b>${e(dayNum(ev.start))}</b><i>${e(dow(ev.start))}</i></span>
+    <span class="when"><b>${e(dayNum(displayDate(ev)))}</b><i>${e(dow(displayDate(ev)))}</i></span>
   </div>`;

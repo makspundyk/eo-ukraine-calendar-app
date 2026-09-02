@@ -1,7 +1,15 @@
 /**
  * Formatting. Migration: these are product decisions, not cosmetics — port them all.
  */
-const D = (o) => new Intl.DateTimeFormat('en-GB', o);
+import { displayWhen, zoneLabel } from './timezone.js';
+
+/**
+ * A date in this project is a plain calendar date — "2026-09-16", no time, no zone. `new Date`
+ * reads that as UTC midnight, so formatting it WITHOUT a timeZone renders it in the browser's
+ * zone: 8pm the previous day in New York, and every date on the site is a day early for half
+ * the Americas. Every date-only formatter is therefore pinned to UTC.
+ */
+const D = (o) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...o });
 const fmtDay   = D({ day: 'numeric' });
 const fmtDow   = D({ weekday: 'short' });
 const fmtMonY  = D({ month: 'long', year: 'numeric' });
@@ -31,12 +39,30 @@ export const nights = (a, b) => {
   return d > 1 ? `${d} days` : null;
 };
 
+/**
+ * The time as the reader should read it — theirs by default, the event's own when they have
+ * asked for that. The zone is always named, because a time without one is a guess.
+ */
 export const timeLabel = (e) => {
+  const local = displayWhen(e);
+  if (local) {
+    return local.end
+      ? `${local.start}–${local.end} ${local.label} time`
+      : `${local.start} ${local.label} time`;
+  }
   if (!e.time_start) return null;
   return e.time_end
     ? `${e.time_start}–${e.time_end} ${e.timezone}`
     : `${e.time_start} ${e.timezone}`;
 };
+
+/**
+ * The day an event falls on FOR THE READER. A 23:30 event in one zone is the next morning in
+ * another, and showing the converted clock against the original date is worse than not
+ * converting at all.
+ */
+export const displayDate = (e) => displayWhen(e)?.date || e.start;
+export const displayEndDate = (e) => displayWhen(e)?.endDate || e.end || e.start;
 
 /** Where beats what: a member filters on travel before anything else. */
 export const placeLabel = (e) => (e.is_online ? 'Online' : e.place || 'Venue to be confirmed');
@@ -82,11 +108,16 @@ export const placeShort = (e) =>
 /** One compact line of when: "6–8 Oct · 3 days" or "16 Sep · 15:30 CET". */
 export const whenShort = (e) => {
   if (!e.start) return 'Date to be confirmed';
-  const f = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-  const s = new Date(e.start), en = new Date(e.end || e.start);
+  const local = displayWhen(e);
+  const startIso = local?.date || e.start;
+  const endIso = local?.endDate || e.end || e.start;
+  const f = D({ day: 'numeric', month: 'short' });
+  const s = new Date(startIso), en = new Date(endIso);
   const range = s.getTime() === en.getTime()
     ? f.format(s)
-    : `${new Intl.DateTimeFormat('en-GB', { day: 'numeric' }).format(s)}–${f.format(en)}`;
-  const extra = e.time_start ? `${e.time_start} ${e.timezone}` : nights(e.start, e.end);
+    : `${D({ day: 'numeric' }).format(s)}–${f.format(en)}`;
+  const extra = local
+    ? `${local.start} ${local.label} time`
+    : (e.time_start ? `${e.time_start} ${e.timezone}` : nights(e.start, e.end));
   return extra ? `${range} · ${extra}` : range;
 };

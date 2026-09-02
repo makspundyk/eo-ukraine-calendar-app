@@ -12,7 +12,8 @@
  */
 import { useEventsApi } from '../api/useEventsApi.js';
 import { chip, action } from '../components/ui.js';
-import { escape as e, dateRange, dayNum, dow, timeLabel, placeLabel, nights } from '../format.js';
+import { escape as e, dateRange, dayNum, dow, timeLabel, placeLabel, nights,
+         displayDate, displayEndDate } from '../format.js';
 import { filterBar } from './FeedPage.js';
 
 export const meta = {
@@ -31,8 +32,8 @@ export async function load(route) {
 const row = (ev) => `
   <tr data-href="#/event/${e(ev.id)}">
     <td class="when">
-      ${ev.start ? `<b>${e(dateRange(ev.start, ev.end))}</b>
-        <span>${e(dow(ev.start))}${timeLabel(ev) ? ` · ${e(timeLabel(ev))}` : ''}</span>`
+      ${ev.start ? `<b>${e(dateRange(displayDate(ev), ev.end ? displayEndDate(ev) : null))}</b>
+        <span>${e(dow(displayDate(ev)))}${timeLabel(ev) ? ` · ${e(timeLabel(ev))}` : ''}</span>`
       : '<b>To be confirmed</b>'}
     </td>
     <td>${chip(ev.type_label, ev.kind)}</td>

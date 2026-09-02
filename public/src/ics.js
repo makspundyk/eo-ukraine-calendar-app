@@ -34,7 +34,7 @@ const ZONES = {
  * which handles daylight saving without a table. Twice, because the first correction can
  * itself cross a DST boundary.
  */
-function toUtc(dateIso, timeHm, zoneCode) {
+export function toUtc(dateIso, timeHm, zoneCode) {
   const zone = ZONES[String(zoneCode || '').toUpperCase()] || 'UTC';
   const [y, m, d] = dateIso.split('-').map(Number);
   const [hh, mm] = (timeHm || '00:00').split(':').map(Number);

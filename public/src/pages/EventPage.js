@@ -20,8 +20,9 @@ import { vevent, googleUrl } from '../ics.js';
 const esc = (v) => e(v);
 import {
   escape as e, dayNum, dow, fullDate, dateRange, timeLabel, placeLabel,
-  placeShort, nights, hasPassed,
+  placeShort, nights, hasPassed, displayDate, displayEndDate,
 } from '../format.js';
+import { displayWhen } from '../timezone.js';
 
 export const meta = {
   id: 'V3', name: 'Event', route: '#/event/:id', vue: 'pages/events/[id].vue',
@@ -41,7 +42,8 @@ export async function load(route) {
   const known = await api.known(route.params.id);
   if (known && known.description === undefined) return { ev: known, partial: true };
   const ev = known?.description !== undefined ? known : await api.byId(route.params.id);
-  if (!ev) throw new Error('That event is not in the calendar.');
+  if (!ev) throw new Error('That event is not in the calendar. It may have been renamed or '
+    + 'taken down — the full list is on the events page.');
   return { ev, partial: false };
 }
 
@@ -75,16 +77,22 @@ function journey(ev) {
   // Each end is labelled. Without labels a single-day event puts a big DATE on the left and a
   // big TIME on the right — two different units in the same visual slot — and "16" for the
   // sixteenth reads as four in the afternoon.
+  const local = displayWhen(ev);
+  const startIso = displayDate(ev);
+  const endIso = displayEndDate(ev);
+
   const left = ev.date_tbc
     ? { label: 'When', big: '—', small: 'Date to be confirmed', sub: '' }
     : { label: multi ? 'Starts' : 'Date',
-        big: dayNum(ev.start), small: mon(ev.start), sub: dow(ev.start) };
+        big: dayNum(startIso), small: mon(startIso), sub: dow(startIso) };
 
   const right = multi
-    ? { label: 'Ends', big: dayNum(ev.end), small: mon(ev.end), sub: dow(ev.end) }
+    ? { label: 'Ends', big: dayNum(endIso), small: mon(endIso), sub: dow(endIso) }
     : ev.time_start
-      ? { label: 'Time', big: ev.time_start,
-          small: ev.time_end ? `to ${ev.time_end}` : 'Starts', sub: ev.timezone }
+      ? { label: 'Time', big: local ? local.start : ev.time_start,
+          small: (local ? local.end : ev.time_end)
+            ? `to ${local ? local.end : ev.time_end}` : 'Starts',
+          sub: local ? `${local.label} time` : ev.timezone }
       : { label: 'Time', big: '·', small: 'to be', sub: 'confirmed' };
 
   return `
@@ -301,6 +309,9 @@ function primaryAction(ev) {
 
 export function render({ ev, partial }) {
   const cta = primaryAction(ev);
+  const local = displayWhen(ev);
+  const startIso = displayDate(ev);
+  const endIso = displayEndDate(ev);
 
   // The sheet's Description cell may hold HTML. richText() renders it from an allowlist —
   // never bind the raw value here.
@@ -356,7 +367,7 @@ export function render({ ev, partial }) {
       <section class="pcard">
         <h2>The details</h2>
         <div class="drows">
-          ${row('cal', 'Date', dateRange(ev.start, ev.end),
+          ${row('cal', 'Date', dateRange(startIso, ev.end ? endIso : null),
                 ev.date_tbc ? ev.date_note : (nights(ev.start, ev.end) || ''))}
           ${row('clock', 'Time', timeLabel(ev) || (ev.date_tbc ? 'Announced with the date' : 'To be confirmed'))}
           ${row(ev.is_online ? 'video' : 'pin', ev.is_online ? 'Joining' : 'Where',
@@ -373,7 +384,7 @@ export function render({ ev, partial }) {
 
     ${hasPassed(ev) ? '' : `<div class="ev-bar">
       <div>
-        <b>${e(ev.date_tbc ? 'Date to be confirmed' : fullDate(ev.start))}</b>
+        <b>${e(ev.date_tbc ? 'Date to be confirmed' : fullDate(startIso))}</b>
         <span>${e(placeLabel(ev))}</span>
       </div>
       ${action(ev, { label: ev.date_tbc ? 'Register interest' : 'Register', small: true })}

@@ -14,7 +14,7 @@ import { useEventsApi } from '../api/useEventsApi.js';
 import * as EventCard from '../components/EventCard.js';
 import * as Timeline from '../components/Timeline.js';
 import { chip, register, action } from '../components/ui.js';
-import { escape as e, monthYear, placeLabel } from '../format.js';
+import { escape as e, monthYear, placeLabel, displayDate } from '../format.js';
 
 export const meta = {
   id: 'V1', name: 'Feed', route: '#/', vue: 'pages/events/index.vue',
@@ -115,11 +115,13 @@ export function wireSubscribe() {
 
 /** Month headers are emitted mid-list, so a page has to know what the previous page ended on. */
 function renderSlots(events, from, to) {
-  let lastMonth = from > 0 ? monthYear(events[from - 1].start) : null;
+  // Grouped by the READER's month: a 23:30 event on the 31st belongs to the next month for
+  // somebody an hour ahead, and a header that disagrees with the card under it looks broken.
+  let lastMonth = from > 0 ? monthYear(displayDate(events[from - 1])) : null;
   let out = '';
   for (const ev of events.slice(from, to)) {
-    const m = monthYear(ev.start);
-    if (m !== lastMonth) out += Timeline.monthHeader(ev.start);
+    const m = monthYear(displayDate(ev));
+    if (m !== lastMonth) out += Timeline.monthHeader(displayDate(ev));
     lastMonth = m;
     out += `<div class="slot">${Timeline.slotRail(ev)}<div>${EventCard.render(ev)}</div></div>`;
   }
