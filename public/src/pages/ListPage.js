@@ -11,7 +11,7 @@
  * cannot reach.
  */
 import { useEventsApi } from '../api/useEventsApi.js';
-import { chip, register } from '../components/ui.js';
+import { chip, action } from '../components/ui.js';
 import { escape as e, dateRange, dayNum, dow, timeLabel, placeLabel, nights } from '../format.js';
 import { filterBar } from './FeedPage.js';
 
@@ -42,7 +42,7 @@ const row = (ev) => `
     </td>
     <td>${e(placeLabel(ev))}${nights(ev.start, ev.end)
       ? `<div class="sub">${e(nights(ev.start, ev.end))}</div>` : ''}</td>
-    <td class="right">${register(ev.registration_url, { small: true, ghost: true })}</td>
+    <td class="right">${action(ev, { small: true, ghost: true })}</td>
   </tr>`;
 
 export function render({ events, tbc, q, counts, facets }) {

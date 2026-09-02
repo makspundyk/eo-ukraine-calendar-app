@@ -20,7 +20,7 @@
  * Register sits above it on its own layer, because it goes somewhere else.
  */
 import { escape as e, whenShort, placeShort, timeLabel, nights } from '../format.js';
-import { chip, register, fact } from './ui.js';
+import { chip, action, fact } from './ui.js';
 import { plainText } from '../richtext.js';
 
 export const render = (ev) => `
@@ -50,7 +50,7 @@ export const render = (ev) => `
                ${fact('cal', nights(ev.start, ev.end))}
                ${ev.guests_welcome ? fact('users', 'Guests welcome') : ''}
              </span>`}
-        ${register(ev.registration_url, { small: true })}
+        ${action(ev, { small: true })}
       </div>
     </div>
   </div>`;

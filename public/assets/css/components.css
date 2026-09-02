@@ -383,3 +383,14 @@
 .attend button:disabled{opacity:.6;cursor:default}
 .addcal-note.good{color:var(--t-global)}
 .addcal-note.bad{color:var(--t-social)}
+
+/* Labels on the journey ends. Without them a big "16" for the sixteenth reads as a time,
+   because the other end of the strip genuinely is one. */
+.jrn-end u{display:block;text-decoration:none;font-size:10px;font-weight:600;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+/* The invitation form standing in for the Register button. */
+.attend.wide{display:grid;grid-template-columns:1fr auto;gap:var(--sp-2)}
+.attend.wide input{height:48px;font-size:14.5px;min-width:0}
+.attend.wide .register{height:48px;font-size:15px}
+@media (max-width:560px){.attend.wide{grid-template-columns:1fr}}
+.micro.past{font-style:italic}

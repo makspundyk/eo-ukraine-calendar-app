@@ -5,15 +5,15 @@
  * from the request: taking an arbitrary event id from a form would let anyone add guests to
  * any event on the calendar.
  */
-import { getCalendar, findCalendarEventId } from '../../lib/calendar.mjs';
+import { resolveCalendarEventId } from '../../lib/calendar.mjs';
 import { addAttendee } from '../../lib/attend.mjs';
 
 export async function onRequestPost(context) {
   let input = {};
   try { input = await context.request.json(); } catch { /* handled below */ }
 
-  const { body: list } = await getCalendar(context.env, { scope: 'all' });
-  const match = list.ok ? findCalendarEventId(list.events, String(input.event ?? '')) : null;
+  const match = await resolveCalendarEventId(context.env, String(input.event ?? ''))
+    .catch(() => null);
 
   const { status, body, logLine } = await addAttendee(context.env, {
     calendarEventId: match?.calendarEventId,

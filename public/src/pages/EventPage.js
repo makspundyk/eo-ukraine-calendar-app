@@ -12,12 +12,12 @@
  * question; a member who only wants the date never has to read the paragraphs.
  */
 import { useEventsApi } from '../api/useEventsApi.js';
-import { chip, register, icon } from '../components/ui.js';
+import { chip, register, action, icon } from '../components/ui.js';
 import { richText } from '../richtext.js';
 import { vevent, googleUrl } from '../ics.js';
 import {
   escape as e, dayNum, dow, fullDate, dateRange, timeLabel, placeLabel,
-  placeShort, nights,
+  placeShort, nights, hasPassed,
 } from '../format.js';
 
 export const meta = {
@@ -69,19 +69,25 @@ function journey(ev) {
   const span = multi ? nights(ev.start, ev.end)
     : (ev.time_start && ev.time_end ? duration(ev) : null);
 
+  // Each end is labelled. Without labels a single-day event puts a big DATE on the left and a
+  // big TIME on the right — two different units in the same visual slot — and "16" for the
+  // sixteenth reads as four in the afternoon.
   const left = ev.date_tbc
-    ? { big: '—', small: 'Date to be confirmed', sub: '' }
-    : { big: dayNum(ev.start), small: mon(ev.start), sub: dow(ev.start) };
+    ? { label: 'When', big: '—', small: 'Date to be confirmed', sub: '' }
+    : { label: multi ? 'Starts' : 'Date',
+        big: dayNum(ev.start), small: mon(ev.start), sub: dow(ev.start) };
 
   const right = multi
-    ? { big: dayNum(ev.end), small: mon(ev.end), sub: dow(ev.end) }
+    ? { label: 'Ends', big: dayNum(ev.end), small: mon(ev.end), sub: dow(ev.end) }
     : ev.time_start
-      ? { big: ev.time_start, small: ev.time_end ? `to ${ev.time_end}` : 'Starts', sub: ev.timezone }
-      : { big: '·', small: 'Time', sub: 'to be confirmed' };
+      ? { label: 'Time', big: ev.time_start,
+          small: ev.time_end ? `to ${ev.time_end}` : 'Starts', sub: ev.timezone }
+      : { label: 'Time', big: '·', small: 'to be', sub: 'confirmed' };
 
   return `
   <div class="jrn">
     <div class="jrn-end">
+      <u>${e(left.label)}</u>
       <b>${e(left.big)}</b><span>${e(left.small)}</span><i>${e(left.sub)}</i>
     </div>
     <div class="jrn-line">
@@ -93,6 +99,7 @@ function journey(ev) {
       <span class="jrn-dot end"></span>
     </div>
     <div class="jrn-end right">
+      <u>${e(right.label)}</u>
       <b>${e(right.big)}</b><span>${e(right.small)}</span><i>${e(right.sub)}</i>
     </div>
   </div>`;
@@ -129,7 +136,7 @@ const row = (ic, label, value, sub = '') => (value ? `
  * when the page is running on the demo calendar.
  */
 const addToCalendar = (ev) => {
-  if (!ev.start) return '';
+  if (!ev.start || hasPassed(ev)) return '';
 
   // The organiser has a real event and the site can put the member ON it. One field, because
   // the address is the only thing we do not already know, and it is not stored anywhere here.
@@ -232,10 +239,48 @@ const initials = (name) => name.split(/\s+/).slice(0, 2).map((w) => w[0] || '').
 
 /* --- page --------------------------------------------------------------- */
 
+/**
+ * When there is nowhere to register, the calendar IS the action.
+ *
+ * Rendering a Register button with no destination is worse than rendering none: a member
+ * presses it, nothing happens, and they conclude the site is broken rather than that the
+ * chapter has not opened registration yet.
+ */
+function primaryAction(ev) {
+  if (hasPassed(ev)) {
+    return `<p class="micro past">This event has already taken place.</p>`;
+  }
+  if (ev.registration_url) {
+    return `${register(ev.registration_url, {
+      label: ev.date_tbc ? 'Register interest' : 'Register for this event' })}
+      <p class="micro">${ev.date_tbc
+        ? 'We will email you as soon as the date is set.'
+        : 'Opens the EO registration page. Takes about a minute.'}</p>`;
+  }
+  if (!ev.start) {
+    return `<p class="micro">Registration opens when the date is set.</p>`;
+  }
+  if (ev.invitable) {
+    return `
+      <form class="attend wide" data-attend="${e(ev.id)}">
+        <input type="email" name="email" required autocomplete="email"
+               placeholder="your@email.com" aria-label="Your email address" />
+        <button type="submit" class="register">Send me the invitation
+          <span class="arr" aria-hidden="true">→</span></button>
+      </form>
+      <p class="micro" data-attend-note>The organiser's own event, so the room and any later
+        change reach you automatically. Your address is not stored by this site.</p>`;
+  }
+  return `
+    <a class="register" href="${e(googleUrl(ev, { origin: location.origin }))}"
+       target="_blank" rel="noopener">Add to Google Calendar
+       <span class="arr" aria-hidden="true">→</span></a>
+    <p class="micro">Or <a href="#" data-ics="${e(ev.id)}">download the .ics file</a> for Apple
+      Calendar, Outlook and everything else.</p>`;
+}
+
 export function render({ ev, partial }) {
-  const cta = register(ev.registration_url, {
-    label: ev.date_tbc ? 'Register interest' : 'Register for this event',
-  });
+  const cta = primaryAction(ev);
 
   // The sheet's Description cell may hold HTML. richText() renders it from an allowlist —
   // never bind the raw value here.
@@ -260,13 +305,8 @@ export function render({ ev, partial }) {
     <div class="ev-col">
       <section class="pcard lift">
         ${journey(ev)}
-        <div class="jrn-act">
-          ${cta}
-          <p class="micro">${ev.date_tbc
-            ? 'We will email you as soon as the date is set.'
-            : 'Opens the EO registration page. Takes about a minute.'}</p>
-        </div>
-        ${addToCalendar(ev)}
+        <div class="jrn-act">${cta}</div>
+        ${ev.registration_url ? addToCalendar(ev) : ''}
       </section>
 
       ${paras ? card('About this event', `<div class="rich">${paras}</div>`)
@@ -311,12 +351,12 @@ export function render({ ev, partial }) {
       <a class="backlink" href="#/">← All events</a>
     </div>
 
-    <div class="ev-bar">
+    ${hasPassed(ev) ? '' : `<div class="ev-bar">
       <div>
         <b>${e(ev.date_tbc ? 'Date to be confirmed' : fullDate(ev.start))}</b>
         <span>${e(placeLabel(ev))}</span>
       </div>
-      ${register(ev.registration_url, { label: ev.date_tbc ? 'Register interest' : 'Register', small: true })}
-    </div>
+      ${action(ev, { label: ev.date_tbc ? 'Register interest' : 'Register', small: true })}
+    </div>`}
   </div>`;
 }

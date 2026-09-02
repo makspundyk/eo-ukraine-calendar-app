@@ -12,7 +12,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, dirname } from 'node:path';
-import { getCalendar, readConfig, findCalendarEventId } from './lib/calendar.mjs';
+import { getCalendar, readConfig, resolveCalendarEventId } from './lib/calendar.mjs';
 import { addAttendee } from './lib/attend.mjs';
 import { getFeed } from './lib/ics-feed.mjs';
 
@@ -97,8 +97,7 @@ createServer(async (req, res) => {
       req.on('end', () => r(d)); });
     let input = {};
     try { input = JSON.parse(raw); } catch { /* handled by the validator */ }
-    const { body: listBody } = await getCalendar(ENV, { scope: 'all' });
-    const match = listBody.ok ? findCalendarEventId(listBody.events, String(input.event ?? '')) : null;
+    const match = await resolveCalendarEventId(ENV, String(input.event ?? '')).catch(() => null);
     const out = await addAttendee(ENV, { calendarEventId: match?.calendarEventId,
                                         email: input.email });
     console.log(`  ${out.logLine}`);

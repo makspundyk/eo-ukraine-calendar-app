@@ -1,4 +1,5 @@
-import { escape as e } from '../format.js';
+import { escape as e, hasPassed } from '../format.js';
+import { googleUrl } from '../ics.js';
 
 /** Small inline icons. Inline so the page has no asset dependency at all. */
 const P = {
@@ -18,6 +19,23 @@ export const chip = (label, kind = 'plain') =>
  * The single action, identical on every surface. A member who has already decided should
  * never have to open another page to act.
  */
+/**
+ * The action on a card or a row.
+ *
+ * With no registration link there is nothing to register for YET, so the calendar takes its
+ * place rather than rendering a button that goes nowhere — pressing a dead Register button
+ * reads as a broken site, not as registration being closed.
+ */
+export const action = (ev, opts = {}) => {
+  // Nothing to register for and nothing to put in a calendar once it is over. Offering either
+  // is worse than offering nothing: it says the site does not know what day it is.
+  if (hasPassed(ev)) return '';
+  if (ev.registration_url) return register(ev.registration_url, opts);
+  if (!ev.start) return '';
+  return register(googleUrl(ev, { origin: location.origin }),
+    { ...opts, label: 'Add to calendar' });
+};
+
 export const register = (href, { small = false, ghost = false, label = 'Register' } = {}) => `
   <a class="register ${small ? 'sm' : ''} ${ghost ? 'ghost' : ''}" href="${e(href)}"
      target="_blank" rel="noopener" onclick="event.stopPropagation()">

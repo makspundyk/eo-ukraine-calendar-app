@@ -43,6 +43,17 @@ export const placeLabel = (e) => (e.is_online ? 'Online' : e.place || 'Venue to 
 
 export const isPast = (e, today) => !!e.end && e.end < today;
 
+/**
+ * Has this already happened? Uses the reader's own date, which is what they are comparing
+ * against when they look at the page.
+ *
+ * An event with no date has not happened — "dates to be confirmed" is a future state.
+ */
+export const hasPassed = (ev) => {
+  if (!ev.start) return false;
+  return (ev.end || ev.start) < new Date().toISOString().slice(0, 10);
+};
+
 export const escape = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
