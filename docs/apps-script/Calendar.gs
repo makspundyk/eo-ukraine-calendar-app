@@ -141,6 +141,7 @@ function onOpen() {
     .createMenu('EO Calendar')
     .addItem('Sync now', 'syncNow')
     .addItem('Check published rows', 'checkAll')
+    .addItem('Refresh attendees now', 'refreshAttendees')
     .addItem('Install hourly sync', 'installTrigger')
     .addItem('Set calendar…', 'setCalendarId')
     .addItem('Set default guests…', 'setDefaultGuests')
@@ -346,7 +347,7 @@ function handleRow_(sheet, values, head, i, touched) {
 function syncNow() {
   var ctx = open_();
   if (!ctx) return;
-  ensureColumns_(ctx.sheet, ctx.head, ['Calendar Event ID', 'Calendar Link']);
+  ensureColumns_(ctx.sheet, ctx.head, ['Calendar Event ID', 'Calendar Link', 'Attendees']);
   ctx = open_();                                     // re-read: columns may have been added
 
   var created = 0, updated = 0, cancelled = 0, revived = 0;
@@ -379,6 +380,7 @@ function syncNow() {
     if (eventId) {
       var existing = fetch_(eventId);
       if (existing) {
+        writeAttendees_(ctx, i, existing);
         // Only the title, the times, and bringing it back if it had been cancelled. The
         // organiser owns the room, the description and the guests.
         var patch = { summary: title, start: when.start, end: when.end };
@@ -394,7 +396,8 @@ function syncNow() {
       failed.push('Row ' + (i + 1) + ': the saved event was gone; a new one was created');
     }
 
-    if (createEvent_(ctx, row, i)) created++;
+    var made = createEvent_(ctx, row, i);
+    if (made) { created++; writeAttendees_(ctx, i, made); }
     else failed.push('Row ' + (i + 1) + ': the event could not be created');
   });
 
@@ -464,6 +467,66 @@ function flushPending() {
   });
   savePending_(map);
   if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
+}
+
+/* ------------------------------------------------------------------ attendees */
+
+/**
+ * Who is coming, written back into the sheet so the chapter can see it without opening
+ * Calendar — and so it can be counted, filtered and exported like anything else in a sheet.
+ *
+ * On the NAMES. Google gives an attendee's `displayName` only when somebody typed one or when
+ * the person is in the same Workspace directory. A personal gmail address usually arrives with
+ * no name at all, and there is no API that turns an address into a real name. So the name is
+ * shown when Google supplies it and the address stands alone when it does not. Inventing one
+ * from the address — "maxpundyk" — would look like data and be a guess.
+ *
+ * This column holds personal addresses. It is internal: lib/normalize.mjs never publishes it.
+ */
+function attendeeLines_(event) {
+  var list = (event && event.attendees) || [];
+  var STATUS = { accepted: 'yes', declined: 'no', tentative: 'maybe', needsAction: 'invited' };
+  return list
+    .filter(function (a) { return a.email && !a.resource && !a.self; })
+    .map(function (a) {
+      var name = String(a.displayName || '').trim();
+      var who = name ? name + ' <' + a.email + '>' : a.email;
+      return who + ' · ' + (STATUS[a.responseStatus] || 'invited');
+    })
+    .sort()
+    .join('\n');
+}
+
+/** Writes only when the value has actually changed, so a quiet hour costs no writes at all. */
+function writeAttendees_(ctx, rowIndex, event) {
+  var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
+  if (!head || head.map.attendees === undefined) return;
+  var cell = ctx.sheet.getRange(rowIndex + 1, head.map.attendees + 1);
+  var next = attendeeLines_(event);
+  if (String(cell.getValue() || '').trim() === next.trim()) return;
+  cell.setValue(next);
+  cell.setNote(next ? next.split('\n').length + ' guest(s), as of ' + new Date().toUTCString()
+                    : '');
+}
+
+/** Re-reads the guest list for every row that has an event, without touching the events. */
+function refreshAttendees() {
+  var ctx = open_();
+  if (!ctx) return;
+  ensureColumns_(ctx.sheet, ctx.head, ['Attendees']);
+  ctx = open_();
+  var seen = 0, total = 0;
+  eachRow_(ctx, function (row, i) {
+    var id = String(get_(row, ctx.map, 'calendar_event_id') || '').trim();
+    if (!id) return;
+    var event = fetch_(id);
+    if (!event) return;
+    writeAttendees_(ctx, i, event);
+    seen++;
+    total += ((event.attendees || []).filter(function (a) {
+      return a.email && !a.resource && !a.self; })).length;
+  });
+  tell_('Read the guest list for ' + seen + ' event(s) — ' + total + ' guest(s) in total.');
 }
 
 /* --------------------------------------------------------------- calendar io */
@@ -543,7 +606,8 @@ var HEADERS = {
   highlights: ['highlights'], who_for: ['who for'],
   speaker_name: ['speaker name'], speaker_title: ['speaker title'],
   registration_url: ['registration url'],
-  calendar_event_id: ['calendar event id'], calendar_link: ['calendar link']
+  calendar_event_id: ['calendar event id'], calendar_link: ['calendar link'],
+  attendees: ['attendees', 'participants', 'guest list']
 };
 
 function findHeaderRow_(values) {

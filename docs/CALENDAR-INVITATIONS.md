@@ -227,6 +227,36 @@ The sync is idempotent: it looks at every published row every time. Type the dat
 next hourly run creates the event and writes its id back. **EO Calendar → Sync now** does it
 immediately if you do not want to wait.
 
+### The `Attendees` column — who is coming
+
+The hourly sync writes the guest list back into an **`Attendees`** column, so the chapter can
+see, count and filter it in the sheet without opening Calendar. **EO Calendar → Refresh
+attendees now** does it immediately.
+
+```
+Anna Koval <anna@example.com> · no
+Zoe Adams <zoe@example.com> · yes
+maxpundyk@gmail.com · invited
+```
+
+`yes` · `no` · `maybe` · `invited` — the reply, in words. Meeting rooms and the calendar itself
+are filtered out. The cell note records how many and when it was read.
+
+**On the names.** Google supplies an attendee's name only when somebody typed one, or when the
+person is in the same Workspace directory. **A personal `@gmail.com` address usually arrives
+with no name at all**, and there is no API that turns an address into one. So the name appears
+when Google gives it and the address stands alone when it does not — inventing "Maxpundyk" from
+`maxpundyk@gmail.com` would look like data and be a guess.
+
+If you need real names, ask for them at registration and keep them there; the calendar is not
+the place that knows.
+
+**This column is personal data.** It is treated as internal — `lib/normalize.mjs` strips it
+alongside `Notes` and `Event Owner`, so it never reaches `/api/calendar` or the browser. There
+is a test asserting an address in that column does not appear in the published payload.
+
+The list is sorted and written **only when it has changed**, so a quiet hour costs no writes.
+
 ### The `Calendar Event ID` column
 
 The script adds it and fills it. It is the difference between creating and updating:

@@ -20,7 +20,7 @@ const Logger = { log() {} }; const SpreadsheetApp = { getActiveSpreadsheet: () =
 const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
-  + 'description_, durationLabel_, minutesBetween_ };'));
+  + 'description_, durationLabel_, minutesBetween_, attendeeLines_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -52,6 +52,28 @@ check('an evening event ending past midnight rolls to the next day',
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime.startsWith('2026-09-17'),
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime);
 check('single-digit hours are padded', mod.addMinutes_('09:00', 90) === '10:30');
+
+console.log('\nthe guest list written back into the sheet');
+const A = (attendees) => mod.attendeeLines_({ attendees });
+const lines = A([
+  { email: 'zoe@x.com', displayName: 'Zoe Adams', responseStatus: 'accepted' },
+  { email: 'anna@x.com', displayName: 'Anna Koval', responseStatus: 'declined' },
+  { email: 'maxpundyk@gmail.com', responseStatus: 'needsAction' },
+  { email: 'room-3@resource.calendar.google.com', resource: true, responseStatus: 'accepted' },
+  { email: 'calendar@group.calendar.google.com', self: true, responseStatus: 'accepted' },
+]).split('\n');
+check('a name is used when Google supplies one',
+  lines.some((l) => l.startsWith('Zoe Adams <zoe@x.com>')), lines.join(' | '));
+check('an address with no name stands alone, not invented from the address',
+  lines.some((l) => l.startsWith('maxpundyk@gmail.com')) && !lines.join().includes('Maxpundyk'));
+check('the reply is shown in plain words',
+  lines.join('\n').includes('· yes') && lines.join('\n').includes('· no')
+  && lines.join('\n').includes('· invited'), lines.join(' | '));
+check('meeting rooms are not guests', !lines.join().includes('room-3'));
+check('the calendar itself is not a guest', !lines.join().includes('group.calendar.google.com'));
+check('sorted, so an unchanged list produces an unchanged cell',
+  lines.join('\n') === lines.slice().sort().join('\n'));
+check('no attendees gives an empty cell, not a placeholder', A([]) === '' && A(undefined) === '');
 
 console.log('\nthe invitation body');
 const D = ['Status','Type','Title','Start Date','End Date','Start Time','End Time','Timezone',

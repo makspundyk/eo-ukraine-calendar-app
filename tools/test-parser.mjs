@@ -19,7 +19,7 @@ const check = (name, cond, detail = '') => {
 const HEADER = ['Status','Type','Title','Start Date','End Date','Start Time','End Time',
   'Timezone','Date Note','Location','Venue','Summary','Description','Highlights','Who For',
   'Speaker Name','Speaker Title','Speaker Bio','Guests Welcome','Registration URL',
-  'Image URL','Image Credit','Event Owner','Notes'];
+  'Image URL','Image Credit','Event Owner','Notes','Attendees'];
 
 // Status defaults to Published here so each case tests what it says it tests; the opt-in
 // rule itself has its own section below.
@@ -32,7 +32,8 @@ const grid = [
         'Start Time':'15:30', 'End Time':'17:00', Location:'Online', Summary:'Ninety minutes.',
         'Speaker Name':'Joe Gregory', 'Speaker Title':'Founder, Authority',
         Highlights:'One\nTwo\nThree', 'Guests Welcome':true,
-        'Registration URL':'https://example.org/a', 'Event Owner':'Anna', Notes:'venue unpaid' }),
+        'Registration URL':'https://example.org/a', 'Event Owner':'Anna', Notes:'venue unpaid',
+        Attendees:'Zoe Adams <zoe@private.example> · yes' }),
   row({ Type:'Global / Regional', Title:'ELC 2026', 'Start Date':'2026-10-06',
         'End Date':'2026-10-08', Location:'Krakow, Poland',
         'Registration URL':'https://example.org/b' }),
@@ -103,6 +104,9 @@ const published = JSON.stringify(events.map(stripInternal));
 check('Event Owner value absent', !published.includes('Anna'));
 check('Notes value absent', !published.includes('venue unpaid'));
 check('no `notes` or `owner` key', !/"(notes|owner|event_owner)"/.test(published));
+// The guest list is personal data written back by the Apps Script. It must never be published.
+check('the guest list is absent', !published.includes('zoe@private.example'));
+check('no `attendees` key', !/"attendees"/.test(published));
 
 console.log('\ndegrading rather than crashing');
 check('a sheet with no header row throws a named reason', (() => {
