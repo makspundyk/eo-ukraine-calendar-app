@@ -3,12 +3,16 @@
  * ===========================================================================
  * Vue: pages/unsubscribe/[[token]].vue
  *
- * The link inside a calendar invitation is shared by every guest on that event, so it cannot
- * carry anybody's token. It lands here without one, and this page explains where a personal
- * link is — rather than asking for an address, which would let anyone remove anyone.
+ * Two ways in, because there have to be.
  *
- * With a token, one button. No sign-in, nothing to remember, and the token is the only thing
- * that identifies the person.
+ * WITH A TOKEN — from the confirmation shown when somebody joined. One button, and the token
+ * is the only thing that identifies them, so nobody can remove anybody else.
+ *
+ * WITHOUT ONE — from the line inside a calendar invitation. An event has ONE description
+ * shared by every guest, so that link cannot be personal; there is no token to put in it. The
+ * page asks for the address instead. Weaker, and the honest trade: knowing an address is
+ * enough to remove it. The alternative was a link that goes to a page saying "sorry, find
+ * your other link", which is not a way out at all.
  */
 import { escape as e } from '../format.js';
 
@@ -22,42 +26,57 @@ export async function load(route) {
 }
 
 export function mount({ token }, _ctx) {
+  const form = document.querySelector('[data-unsub-form]');
   const button = document.querySelector('[data-unsub]');
-  if (!button) return;
   const note = document.querySelector('[data-unsub-note]');
+  if (!button) return;
 
-  button.addEventListener('click', async () => {
+  const send = async (payload) => {
     button.disabled = true;
+    const previous = button.textContent;
     button.textContent = 'One moment…';
     try {
       const res = await fetch('/api/unsubscribe', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json();
       note.className = `unsub-note ${body.ok ? 'good' : 'bad'}`;
       note.textContent = body.message || (body.ok ? 'Done.' : 'That link is not valid.');
-      if (body.ok) button.remove();
-      else { button.disabled = false; button.textContent = 'Try again'; }
+      if (body.ok) { button.remove(); form?.remove(); }
+      else { button.disabled = false; button.textContent = previous; }
     } catch {
       note.className = 'unsub-note bad';
       note.textContent = 'That did not work. Try again in a moment.';
       button.disabled = false;
-      button.textContent = 'Try again';
+      button.textContent = previous;
     }
-  });
+  };
+
+  if (form) {
+    form.addEventListener('submit', (ev) => { ev.preventDefault();
+      send({ email: form.email.value }); });
+  } else {
+    button.addEventListener('click', () => send({ token }));
+  }
 }
 
 export function render({ token }) {
   if (!token) {
     return `
     <div class="unsub">
-      <h1>Leaving the list</h1>
-      <p>Your personal unsubscribe link is at the bottom of the message you received when you
-        joined. It is unique to you, which is what stops anybody else removing you.</p>
-      <p class="muted">Lost it? Reply to any invitation, or write to the chapter, and somebody
-        will take you off the list.</p>
-      <p><a class="register ghost sm" href="#/">Back to the events</a></p>
+      <h1>Stop being invited?</h1>
+      <p>Type the address you are invited on and you will not be added to new EO Ukraine
+        events. Invitations you have already accepted stay in your calendar — this only stops
+        future ones.</p>
+      <form class="unsub-form" data-unsub-form>
+        <input type="email" name="email" required autocomplete="email"
+               placeholder="your@email.com" aria-label="Your email address" />
+        <button type="submit" class="register" data-unsub>Unsubscribe
+          <span class="arr" aria-hidden="true">→</span></button>
+      </form>
+      <p class="unsub-note" data-unsub-note>You can join again any time from the events page.</p>
+      <p><a class="backlink" href="#/">← Back to the events</a></p>
     </div>`;
   }
   return `

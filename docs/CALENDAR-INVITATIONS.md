@@ -419,13 +419,30 @@ than addresses.
 
 ### Leaving
 
-Every invitation carries a line pointing at `/#/unsubscribe`. That page cannot identify anyone
-on its own — **a calendar invitation is shared by every guest, so it cannot carry one person's
-token** — so it explains where their personal link is rather than asking for an address, which
-would let anyone remove anyone.
+Two ways out, because one is not possible everywhere.
 
-The personal link, `/#/unsubscribe/<token>`, is shown once: in the confirmation, to the person
-who just gave us the address. That is the only moment we know for certain who they are.
+**`/#/unsubscribe/<token>`** — the good one. The token identifies exactly one person, so nobody
+can remove anybody else. It is shown once, in the confirmation, to the person who just gave us
+their address: the only moment we know for certain who they are.
+
+**`/#/unsubscribe`** — from inside a calendar invitation, where the link cannot be personal.
+**A Google Calendar event has one description shared by every guest**, so there is nowhere to
+put a per-person token; the API has no per-guest text at all. That page asks for the address
+instead.
+
+That second path is weaker, and the trade is deliberate: knowing an address is enough to remove
+it. It is the same standing as most "manage your preferences" pages without a login, the harm
+is bounded — one click to rejoin — and the alternative was a link leading to a page saying
+"find your other link", which is not a way out at all.
+
+Neither path discloses anything. A wrong token and a used one get the same answer; an address
+that is not on the list gets the same answer as one that is, so the form cannot be used to test
+who belongs to this chapter.
+
+**If a personal link in the invitation matters**, the way to get one is to send our own message
+alongside Google's — Apps Script can send mail as the authorising user, so each subscriber
+could receive a short note carrying their own token. That is a second email per invitation, so
+it is a decision rather than an obvious improvement.
 
 ### One more scope
 

@@ -7,7 +7,7 @@ export async function onRequestPost(context) {
 
   let body;
   try {
-    const out = await unsubscribe(context.env, input.token);
+    const out = await unsubscribe(context.env, { token: input.token, email: input.email });
     body = { ok: out.ok, message: out.message, reason: out.reason };
   } catch (err) {
     console.log(`unsubscribe: [${err.reason || 'failed'}] ${err.message}`);

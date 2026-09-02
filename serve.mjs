@@ -119,7 +119,7 @@ createServer(async (req, res) => {
     const input = await readBody();
     let body;
     try {
-      const out = await unsubscribe(ENV, input.token);
+      const out = await unsubscribe(ENV, { token: input.token, email: input.email });
       body = { ok: out.ok, message: out.message, reason: out.reason };
     } catch (err) {
       console.log(`  unsubscribe: [${err.reason || 'failed'}] ${err.message}`);

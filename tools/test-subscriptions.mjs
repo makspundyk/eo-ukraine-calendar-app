@@ -86,17 +86,37 @@ check('someone who left is un-ticked in place, not duplicated',
 
 console.log('\nleaving');
 reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
-r = await unsubscribe(env, 'tok-a');
+r = await unsubscribe(env, { token: 'tok-a' });
 check('the right row is ticked',
   r.ok === true && wrote[0].url.includes('!D2') && wrote[0].body.values[0][0] === true,
   JSON.stringify(wrote[0]));
 reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
-r = await unsubscribe(env, 'not-a-real-token');
+r = await unsubscribe(env, { token: 'not-a-real-token' });
 check('a wrong token changes nothing', wrote.length === 0);
 check('...and the answer is identical to a used one, so tokens cannot be probed',
   r.message === 'That unsubscribe link is not valid.');
-r = await unsubscribe(env, '');
-check('an empty token is refused', r.ok === false);
+r = await unsubscribe(env, {});
+check('nothing at all is refused', r.ok === false);
+
+// The link inside a calendar invitation is shared by every guest, so it carries no token.
+// Somebody arriving from it types their address instead.
+console.log('\nleaving without a token');
+reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
+r = await unsubscribe(env, { email: ' A@X.com ' });
+check('an address works, and is matched case-insensitively',
+  r.ok === true && wrote.length === 1 && wrote[0].body.values[0][0] === true,
+  JSON.stringify(wrote[0] && wrote[0].body));
+reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
+r = await unsubscribe(env, { email: 'stranger@x.com' });
+check('an address that is not on the list changes nothing', wrote.length === 0);
+check('...and gets the SAME answer, so the form cannot be used to test who is a member',
+  r.ok === true && r.message === 'You will not be invited again.', JSON.stringify(r));
+r = await unsubscribe(env, { email: 'not-an-email' });
+check('a malformed address is refused', r.reason === 'bad_email');
+reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
+r = await unsubscribe(env, { email: 'tok-a' });
+check('a token typed into the address field is not accepted as one',
+  wrote.length === 0 && r.reason === 'bad_email');
 
 console.log('\ntokens');
 const seen = new Set(Array.from({ length: 200 }, () => newToken()));
