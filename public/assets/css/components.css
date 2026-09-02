@@ -321,3 +321,18 @@
 /* Demo mode was chosen, so the banner stays neutral rather than warning-coloured. */
 .banner.quiet{background:var(--surface-2);border-bottom:1px solid var(--rule-2)}
 .banner.quiet b{color:var(--ink)}
+
+/* --- second filter row: online / in person ------------------------------
+   A separate row because it is a separate question. Quieter than the type row so the eye
+   still lands on the types first, which is what a member scans for. */
+.filters.second{margin-top:calc(var(--sp-4) * -1);margin-bottom:var(--sp-5);
+  align-items:center}
+.filters-label{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);margin-right:var(--sp-1)}
+.filters.second a{height:28px;padding:0 12px;font-size:12.5px;box-shadow:none;
+  background:var(--surface-2);color:var(--ink-2)}
+.filters.second a:hover{background:var(--surface-3);color:var(--ink)}
+.filters.second a.on{background:var(--ink);color:var(--paper)}
+/* A filter that would return nothing says so rather than letting a member find out. */
+.filters a.none{opacity:.42}
+.filters a.none.on{opacity:1}

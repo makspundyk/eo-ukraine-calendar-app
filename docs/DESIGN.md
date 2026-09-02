@@ -52,6 +52,19 @@ registration, on the step where they are most likely to drop.
 
 Both show the same events; they differ in how much they show at once.
 
+**Filters — two rows, because they are two questions.** What kind of event, and whether a
+member can physically get to it. Folding them into one row would force a choice between
+questions people ask together: *a learning event I can attend in person*.
+
+The type row is built from the sheet's `Type` column, not from a list in the code — add a type
+to the sheet and its tab appears; stop running one and it goes away rather than sitting there
+returning nothing. The second row is `All` / `In person` / `Online`, derived from `Location`,
+with `All` selected by default. A tab that would return nothing is dimmed rather than removed,
+and a tab that is *selected* is never removed even at zero, or a member could neither see what
+is filtering the page nor click it off.
+
+Every filter is in the URL, so the exact view a member is looking at can be sent to a colleague.
+
 **Feed** — the default. One card per event with a cover, sticky month headers, and a vertical
 timeline down the side: a dot per event, month labels, and the dot for whatever you are
 looking at filled in. It answers "what is coming up" by scrolling, the way a member actually

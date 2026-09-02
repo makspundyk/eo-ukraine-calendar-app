@@ -23,31 +23,55 @@ export const meta = {
 
 const api = useEventsApi();
 
-export const KINDS = [
-  ['', 'Everything'], ['learning', 'Learning'], ['forum', 'Forum test drive'],
-  ['chapter', 'Chapter'], ['global', 'Global & regional'], ['social', 'Social'],
-];
+/**
+ * The filter bar. Two independent rows, because they answer two different questions and a
+ * member usually has both in mind at once: "a learning event" and "one I can actually get to".
+ * Folding them into one row would force a choice between them.
+ *
+ *   row 1  what kind of event   — built from the sheet's Type column, never hard-coded
+ *   row 2  online or in person  — derived from Location, "All" by default
+ *
+ * Every link carries the whole state, so any view a member is looking at can be sent to a
+ * colleague as a URL and arrive looking the same.
+ */
+const href = (q, patch) => {
+  const next = { kind: q.kind ?? '', where: q.where ?? '', when: q.when ?? '', ...patch };
+  const search = Object.entries(next)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  return `#${q.view === 'list' ? '/list' : '/'}${search ? `?${search}` : ''}`;
+};
 
-export const filterBar = (q) => `
+const tab = (q, patch, label, on, count) => `
+  <a href="${e(href(q, patch))}" class="${on ? 'on' : ''}${count === 0 ? ' none' : ''}"
+     ${count === 0 ? 'aria-disabled="true"' : ''}>${e(label)}</a>`;
+
+export const filterBar = (q, facets) => {
+  const kind = q.kind ?? '';
+  const where = q.where ?? '';
+  return `
   <div class="filters">
-    ${KINDS.map(([k, label]) => `
-      <a href="#${e(q.view === 'list' ? '/list' : '/')}${
-        k || q.when === 'past' ? '?' : ''}${
-        [k ? `kind=${k}` : '', q.when === 'past' ? 'when=past' : ''].filter(Boolean).join('&')}"
-         class="${(q.kind ?? '') === k ? 'on' : ''}">${e(label)}</a>`).join('')}
+    ${tab(q, { kind: '' }, 'Everything', !kind, facets.total)}
+    ${facets.types.map((t) =>
+      tab(q, { kind: t.kind }, t.label, kind === t.kind, t.count)).join('')}
     <span class="spacer"></span>
-    <a href="#${e(q.view === 'list' ? '/list' : '/')}${
-      q.when === 'past' ? (q.kind ? `?kind=${e(q.kind)}` : '')
-                        : `?${q.kind ? `kind=${e(q.kind)}&` : ''}when=past`}"
-       class="${q.when === 'past' ? 'on' : ''}">Past events</a>
+    ${tab(q, { when: q.when === 'past' ? '' : 'past' }, 'Past events', q.when === 'past')}
+  </div>
+  <div class="filters second">
+    <span class="filters-label">Where</span>
+    ${tab(q, { where: '' }, 'All', !where, facets.places.all)}
+    ${tab(q, { where: 'inperson' }, 'In person', where === 'inperson', facets.places.inperson)}
+    ${tab(q, { where: 'online' }, 'Online', where === 'online', facets.places.online)}
   </div>`;
+};
 
 export async function load(route) {
-  return { ...(await api.list({ kind: route.query.kind, when: route.query.when })),
+  return { ...(await api.list({ kind: route.query.kind, where: route.query.where,
+                                when: route.query.when })),
            q: { ...route.query, view: 'feed' } };
 }
 
-export function render({ events, tbc, q, counts }) {
+export function render({ events, tbc, q, counts, facets }) {
   let lastMonth = null;
   const rows = events.map((ev) => {
     const m = monthYear(ev.start);
@@ -65,7 +89,7 @@ export function render({ events, tbc, q, counts }) {
          gatherings and the global calendar.`}</p>
   </div>
 
-  ${filterBar(q)}
+  ${filterBar(q, facets)}
 
   ${events.length ? `<div class="feed"><div class="rail"><span class="rail-line"></span></div>
     <div></div>${rows}</div>`

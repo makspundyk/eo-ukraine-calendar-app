@@ -23,7 +23,8 @@ export const meta = {
 const api = useEventsApi();
 
 export async function load(route) {
-  return { ...(await api.list({ kind: route.query.kind, when: route.query.when })),
+  return { ...(await api.list({ kind: route.query.kind, where: route.query.where,
+                                when: route.query.when })),
            q: { ...route.query, view: 'list' } };
 }
 
@@ -44,7 +45,7 @@ const row = (ev) => `
     <td class="right">${register(ev.registration_url, { small: true, ghost: true })}</td>
   </tr>`;
 
-export function render({ events, tbc, q, counts }) {
+export function render({ events, tbc, q, counts, facets }) {
   const all = [...events, ...tbc];
   return `
   <div class="page-head">
@@ -53,7 +54,7 @@ export function render({ events, tbc, q, counts }) {
       — compare dates, places and formats side by side.</p>
   </div>
 
-  ${filterBar(q)}
+  ${filterBar(q, facets)}
 
   ${all.length ? `<div class="listwrap"><div class="tbl-scroll"><table class="tbl">
     <thead><tr>
