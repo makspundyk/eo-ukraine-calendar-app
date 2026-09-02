@@ -220,6 +220,40 @@ keeps working if any of the above is not set up.
 
 ---
 
+## Testing it
+
+```bash
+npm run check
+```
+
+Reads only — it never creates, edits or invites. Each step is separate, so a failure names the
+one that broke and what to change:
+
+```
+1. the service account    key loaded
+2. the spreadsheet        rows read, events parsed, how many carry a Calendar Event ID
+3. delegation             Google issued a token acting as GOOGLE_IMPERSONATE_USER
+4. the calendar           events read on GOOGLE_CALENDAR_ID
+```
+
+Step 4 lists `events`, not the calendar's metadata. The granted scope is `calendar.events`,
+which deliberately does **not** permit reading calendar metadata — a metadata call returns 403
+even when everything is correct, so checking it would report a failure that is not one.
+
+Then, end to end:
+
+1. **In the sheet** — mark a complete row `Published`, then **EO Calendar → Sync now**. It
+   reports what it created and writes a `Calendar Event ID` into the row
+2. **In Google Calendar** — the event is on the shared calendar. Change the room; nothing in
+   the sheet changes, which is the point
+3. `npm run check` again — step 4 now lists it
+4. **On the site** — `npm run dev`, open that event. It shows *"Get the calendar invitation"*
+   rather than the copy buttons. Enter an address you control and send it
+5. **In that inbox** — the invitation arrives, with the room on it
+6. **Back in Google Calendar** — the guest is on the event's guest list
+
+If step 4 still shows the copy buttons, the row has no `Calendar Event ID` yet: run the sync.
+
 ## If it does not work
 
 | Symptom | Cause |
@@ -229,6 +263,14 @@ keeps working if any of the above is not set up.
 | `not_enabled` | `GOOGLE_IMPERSONATE_USER` is unset |
 | `no_event` | the row has no `Calendar Event ID` — run the sync |
 | `event_missing` | the id is stale, or `GOOGLE_CALENDAR_ID` points at a different calendar |
+| 403 `insufficient authentication scopes` | the delegated scope is missing or misspelled in the admin console |
+| 404 on the calendar | `GOOGLE_CALENDAR_ID` is wrong, or the calendar is not shared with `GOOGLE_IMPERSONATE_USER` |
+
+**Delegation is per domain.** The service account can only act as users in the domain whose
+admin console granted it. Granting it in `ideainyou.com` means `GOOGLE_IMPERSONATE_USER` must
+be an `@ideainyou.com` address; an `@eoukraine.com` one fails with
+`invalid_grant: Invalid email or User ID`. That user then needs *Make changes to events* on the
+calendar — sharing is what connects the two domains, not the delegation.
 
 The reason is always in the server log with the full detail; the browser only ever gets the
 short version.

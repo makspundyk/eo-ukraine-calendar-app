@@ -8,7 +8,8 @@
     "dev:cf": "node tools/dev-cf.mjs",
     "data": "python3 data/normalize.py",
     "test": "node tools/test-parser.mjs && node tools/test-api.mjs && node tools/test-ics.mjs && node tools/test-attend.mjs && node tools/test-apps-script.mjs",
-    "shots": "node tools/shots.mjs"
+    "shots": "node tools/shots.mjs",
+    "check": "node tools/check-google.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",
