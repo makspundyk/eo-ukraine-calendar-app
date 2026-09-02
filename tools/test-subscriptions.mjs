@@ -37,6 +37,27 @@ check('the string "TRUE" counts as ticked too', !active.includes('c@x.com'), act
 check('an empty cell means still subscribed', active.includes('d@x.com'));
 check('only the untouched rows remain', active.join() === 'a@x.com,d@x.com', active.join());
 
+console.log('\na tab somebody made by hand, with no header row');
+// The bug this replaced: row 1 held a SUBSCRIBER, was read as the header, so the list looked
+// empty — every visit appended a duplicate and nobody could ever be found to unsubscribe.
+sheet = [['someone@x.com', '2026-01-01', 'S', false, 'tok-s']];
+wrote = [];
+let out = await readSubscribers(env);
+check('a first row that is not a header is recognised as one', out.needsHeader === true);
+check('...and no subscriber is invented from it', out.rows.length === 0);
+sheet = [];
+out = await readSubscribers(env);
+check('an entirely empty tab also asks for a header', out.needsHeader === true);
+
+sheet = [['someone@x.com', '2026-01-01', 'S', false, 'tok-s']];
+wrote = [];
+await subscribe(env, { email: 'new@x.com' }).catch(() => {});
+check('a row is inserted before the header is written, so nothing is overwritten',
+  wrote.some((w) => JSON.stringify(w.body).includes('insertDimension')),
+  wrote.map((w) => Object.keys(w.body).join()).join(' | '));
+check('the header written is the documented one',
+  wrote.some((w) => JSON.stringify(w.body.values || '').includes('Date Subscribed')));
+
 console.log('\njoining');
 reset([]);
 let r = await subscribe(env, { email: ' New.Person@Example.COM ', name: 'New Person' });

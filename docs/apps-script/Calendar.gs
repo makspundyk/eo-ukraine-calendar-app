@@ -388,7 +388,7 @@ function syncNow() {
   var ctx = open_();
   if (!ctx) return;
   ensureColumns_(ctx.sheet, ctx.head,
-    ['Calendar Event ID', 'Calendar Link', 'Attendees',
+    ['Calendar Event ID', 'Calendar Link', 'Attendees Emails', 'Attendees',
      'Invite Subscribers?', 'Subscribers Invited At']);
   ctx = open_();                                     // re-read: columns may have been added
 
@@ -681,23 +681,59 @@ function attendeeLines_(event) {
     .join('\n');
 }
 
-/** Writes only when the value has actually changed, so a quiet hour costs no writes at all. */
+/**
+ * Just the addresses, comma separated.
+ *
+ * This one is the recovery copy. If an event is deleted in Google and the script rebuilds it,
+ * the guest list is gone with it — Google keeps no record on our side. This column is that
+ * record, and createEvent_() reads it back, so nobody has to be asked to re-register. It is
+ * also the format that pastes straight into Google Calendar's "Add guests" field by hand.
+ */
+function attendeeEmails_(event) {
+  return ((event && event.attendees) || [])
+    .filter(function (a) { return a.email && !a.resource && !a.self; })
+    .map(function (a) { return String(a.email).toLowerCase(); })
+    .sort()
+    .join(', ');
+}
+
+/** Writes only when a value has actually changed, so a quiet hour costs no writes at all. */
 function writeAttendees_(ctx, rowIndex, event) {
   var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
-  if (!head || head.map.attendees === undefined) return;
-  var cell = ctx.sheet.getRange(rowIndex + 1, head.map.attendees + 1);
-  var next = attendeeLines_(event);
-  if (String(cell.getValue() || '').trim() === next.trim()) return;
-  cell.setValue(next);
-  cell.setNote(next ? next.split('\n').length + ' guest(s), as of ' + new Date().toUTCString()
-                    : '');
+  if (!head) return;
+
+  if (head.map.attendees !== undefined) {
+    var rich = ctx.sheet.getRange(rowIndex + 1, head.map.attendees + 1);
+    var lines = attendeeLines_(event);
+    if (String(rich.getValue() || '').trim() !== lines.trim()) {
+      rich.setValue(lines);
+      rich.setNote(lines ? lines.split('\n').length + ' guest(s), as of '
+                           + new Date().toUTCString() : '');
+    }
+  }
+
+  if (head.map.attendees_emails !== undefined) {
+    var flat = ctx.sheet.getRange(rowIndex + 1, head.map.attendees_emails + 1);
+    var emails = attendeeEmails_(event);
+    // Never blank a list that has content. An event that momentarily reads back with no
+    // attendees would otherwise wipe the only copy of who was coming.
+    if (emails && String(flat.getValue() || '').trim() !== emails) flat.setValue(emails);
+  }
+}
+
+/** Addresses previously recorded for this row, for rebuilding a lost event. */
+function recordedEmails_(row, col) {
+  return String(get_(row, col, 'attendees_emails') || '')
+    .split(/[,;\n]/)
+    .map(function (x) { return x.trim().toLowerCase(); })
+    .filter(function (x) { return x.indexOf('@') > 0; });
 }
 
 /** Re-reads the guest list for every row that has an event, without touching the events. */
 function refreshAttendees() {
   var ctx = open_();
   if (!ctx) return;
-  ensureColumns_(ctx.sheet, ctx.head, ['Attendees']);
+  ensureColumns_(ctx.sheet, ctx.head, ['Attendees Emails', 'Attendees']);
   ctx = open_();
   var seen = 0, total = 0;
   eachRow_(ctx, function (row, i) {
@@ -731,7 +767,15 @@ function createEvent_(ctx, row, i) {
     guestsCanSeeOtherGuests: false,
     guestsCanInviteOthers: false
   };
+  // The organisers, plus anybody this row remembers from an event that no longer exists.
   var guests = defaultGuests_();
+  var seen = {};
+  guests.forEach(function (g) { seen[g.email.toLowerCase()] = true; });
+  recordedEmails_(row, ctx.map).forEach(function (email) {
+    if (seen[email]) return;
+    seen[email] = true;
+    guests.push({ email: email, responseStatus: 'needsAction' });
+  });
   if (guests.length) body.attendees = guests;
 
   try {
@@ -792,6 +836,7 @@ var HEADERS = {
   registration_url: ['registration url'],
   calendar_event_id: ['calendar event id'], calendar_link: ['calendar link'],
   attendees: ['attendees', 'participants', 'guest list'],
+  attendees_emails: ['attendees emails', 'attendee emails', 'attendees email'],
   invite_subscribers: ['invite subscribers?', 'invite subscribers'],
   subscribers_invited: ['subscribers invited at', 'subscribers invited']
 };

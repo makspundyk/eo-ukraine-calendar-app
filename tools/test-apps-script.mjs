@@ -21,7 +21,7 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
-  + 'pendingInvites_, savePendingInvites_ };'));
+  + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -89,6 +89,29 @@ check('the calendar itself is not a guest', !lines.join().includes('group.calend
 check('sorted, so an unchanged list produces an unchanged cell',
   lines.join('\n') === lines.slice().sort().join('\n'));
 check('no attendees gives an empty cell, not a placeholder', A([]) === '' && A(undefined) === '');
+
+console.log('\nthe recovery column');
+const guests = [
+  { email: 'Zoe@X.com', displayName: 'Zoe Adams', responseStatus: 'accepted' },
+  { email: 'anna@x.com', displayName: 'Anna Koval', responseStatus: 'declined' },
+  { email: 'room@resource.calendar.google.com', resource: true },
+  { email: 'cal@group.calendar.google.com', self: true },
+];
+const flat = mod.attendeeEmails_({ attendees: guests });
+check('addresses only, comma separated, ready to paste into Google Calendar',
+  flat === 'anna@x.com, zoe@x.com', flat);
+check('rooms and the calendar itself are not people', !flat.includes('resource') && !flat.includes('group.calendar'));
+check('lower-cased and sorted, so an unchanged list writes nothing',
+  flat === flat.toLowerCase() && flat === flat.split(', ').sort().join(', '));
+
+const R = ['Attendees Emails'];
+const rhead = mod.findHeaderRow_([['Title', 'Start Date', 'Status', 'Attendees Emails']]);
+const back = mod.recordedEmails_(['t', '2026-01-01', 'Published',
+  ' A@X.com, b@x.com \n c@x.com ; not-an-address '], rhead.map);
+check('read back for a rebuild, whatever the separator',
+  back.join() === 'a@x.com,b@x.com,c@x.com', back.join());
+check('rubbish is dropped rather than invited', !back.join().includes('not-an-address'));
+check('an empty column recovers nothing', mod.recordedEmails_(['t','','',''], rhead.map).length === 0);
 
 console.log('\nthe invitation body');
 const D = ['Status','Type','Title','Start Date','End Date','Start Time','End Time','Timezone',
