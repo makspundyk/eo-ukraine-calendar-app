@@ -72,6 +72,9 @@ check('unreadable date -> date_tbc, not a crash',
   by('Bad data').date_tbc === true && issues.some((i) => i.kind === 'unreadable_date'));
 check('javascript: registration link dropped',
   by('Bad data').registration_url === '' && issues.some((i) => i.kind === 'unsafe_url'));
+check('a row with no registration link is not reported as a problem',
+  !issues.some((i) => i.kind === 'no_registration_url'),
+  issues.filter((i) => i.kind === 'no_registration_url').length + ' reported');
 check('missing image falls back by type', by('ELC 2026').image_url.startsWith('https://'));
 
 console.log('\npublishing is opt-in');

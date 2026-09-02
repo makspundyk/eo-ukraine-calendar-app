@@ -121,9 +121,12 @@ sheet opens. If it is not there, reload the tab.
 A row can be marked Published before it is ready. The script never creates a half-finished
 event, and it says which rows it skipped and why.
 
-**Required before a row is published at all** — the same three as `SHEET.md`:
-`Title`, `Type`, `Registration URL`. Without the link the Register button is dead; without the
-type the event falls outside every filter.
+**Required before a row is published at all** — two things: `Title` and `Type`.
+
+**A `Registration URL` is not one of them.** Events are often announced before registration
+opens, and some never have a form. The site shows *Add to Google Calendar* or the invitation
+form instead of a dead button, so a row without one is finished, not broken — marking it red
+said something was wrong when nothing was.
 
 It also reports a `Start Date` that is not `YYYY-MM-DD`, an `End Date` before the start, a time
 that is not `HH:MM`, and an `End Time` with no `Start Time`.

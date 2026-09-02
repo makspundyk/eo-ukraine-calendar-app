@@ -210,14 +210,16 @@ function installTrigger() {
 }
 
 /**
- * What a row needs before it may go in front of the chapter at all. Matches docs/SHEET.md:
- * without a registration link the Register button is dead, and without a type it falls outside
- * every filter.
+ * What a row needs before it may go in front of the chapter at all.
+ *
+ * Two things, and only two. A Registration URL is NOT among them: plenty of events are
+ * announced before registration opens, or never have a form at all, and the site handles that
+ * — it offers "Add to Google Calendar" or the invitation instead of a dead button. Marking
+ * those rows red said something was wrong when nothing was.
  */
 var REQUIRED_TO_PUBLISH = [
   { field: 'title', label: 'Title' },
-  { field: 'type', label: 'Type' },
-  { field: 'registration_url', label: 'Registration URL' }
+  { field: 'type', label: 'Type' }
 ];
 
 /**

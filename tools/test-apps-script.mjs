@@ -207,8 +207,11 @@ const complete = { Status:'Published', Type:'Social', Title:'T', 'Start Date':'2
                    'Registration URL':'https://e.org/r' };
 
 check('a complete row has no problems', P(complete).length === 0, P(complete).join('; '));
-check('a missing Registration URL is caught',
-  P({ ...complete, 'Registration URL':'' }).join().includes('Registration URL'));
+// Registration opens later, or never. The site offers the calendar instead of a dead button,
+// so a row without one is finished, not broken.
+check('a missing Registration URL is NOT a problem',
+  P({ ...complete, 'Registration URL':'' }).length === 0,
+  P({ ...complete, 'Registration URL':'' }).join('; '));
 check('a missing Type is caught', P({ ...complete, Type:'' }).join().includes('Type'));
 check('a missing Title is caught', P({ ...complete, Title:'' }).join().includes('Title'));
 // The one that must NOT be an error: "dates to be confirmed" is a real, published state.
