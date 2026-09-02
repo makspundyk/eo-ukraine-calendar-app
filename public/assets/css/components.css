@@ -171,8 +171,12 @@
 .ev-with{margin-top:var(--sp-2);font-size:15.5px;color:rgba(255,255,255,.88)}
 
 /* the column of cards, lifted so the first one overlaps the photograph */
+/* min-width:0 on the items, or the column cannot be narrower than its widest unbreakable
+   child. A grid item defaults to min-width:auto, so the no-wrap pill inside the journey strip
+   was setting the floor for the whole page and a 320px phone scrolled sideways. */
 .ev-col{max-width:var(--col);margin:0 auto;display:grid;gap:var(--sp-4);
-  padding-bottom:var(--sp-8)}
+  padding-bottom:var(--sp-8);min-width:0}
+.ev-col > *{min-width:0}
 .pcard{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--e1);
   padding:var(--sp-5) var(--sp-6)}
 .pcard.lift{margin-top:calc(var(--sp-6) * -1);position:relative;z-index:4;box-shadow:var(--e3)}
@@ -201,14 +205,16 @@
 .rich hr{border:0;border-top:1px solid var(--rule-2);margin:var(--sp-5) 0}
 
 /* the journey strip */
-.jrn{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--sp-4)}
+.jrn{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--sp-4);
+  min-width:0}
+.jrn > *{min-width:0}
 .jrn-end{text-align:center;min-width:78px}
 .jrn-end b{display:block;font-family:var(--font-display);font-size:32px;font-weight:600;
   line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
 .jrn-end span{display:block;font-size:13.5px;color:var(--ink-2);margin-top:2px}
 .jrn-end i{display:block;font-style:normal;font-size:11.5px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--ink-3);margin-top:1px}
-.jrn-line{display:flex;align-items:center;gap:var(--sp-2)}
+.jrn-line{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
 .jrn-rule{flex:1;height:1.5px;background:repeating-linear-gradient(to right,
   var(--rule) 0 5px,transparent 5px 10px)}
 .jrn-dot{width:9px;height:9px;border-radius:50%;flex:none;
@@ -251,16 +257,18 @@
 .credit{margin-top:var(--sp-5) !important;font-size:11.5px !important;color:var(--ink-3) !important}
 
 /* mobile action bar — Register is never scrolled away from */
-.ev-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;
+.ev-bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:100%;
   align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-4);
   background:rgba(255,255,255,.94);backdrop-filter:blur(10px);
   border-top:1px solid var(--rule-2);box-shadow:0 -4px 20px rgba(20,19,17,.07)}
-.ev-bar b{display:block;font-size:14px;color:var(--ink)}
+.ev-bar > div{min-width:0}
+.ev-bar b{display:block;font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
 .ev-bar span{display:block;font-size:12px;color:var(--ink-3)}
 .ev-bar .register{margin-left:auto}
 
 .backlink{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-2);
-  justify-self:center;margin-top:var(--sp-4)}
+  justify-self:center;margin-top:var(--sp-4);min-height:32px;padding:0 var(--sp-2)}
 .backlink:hover{color:var(--ink)}
 
 /* --- misc ------------------------------------------------------------- */
@@ -299,7 +307,7 @@
   .jrn{grid-template-columns:auto 1fr auto;gap:var(--sp-2)}
   .jrn-end{min-width:62px}
   .jrn-end b{font-size:24px}
-  .jrn-mid{padding:5px 10px;font-size:12px}
+  .jrn-mid{padding:5px 10px;font-size:12px;white-space:normal;text-align:center}
   /* on a phone the dashed rules shrink to a stub, which reads as damage rather than distance */
   .jrn-rule{display:none}
   .jrn-line{justify-content:center;gap:var(--sp-2)}
@@ -394,7 +402,7 @@
 
 /* Labels on the journey ends. Without them a big "16" for the sixteenth reads as a time,
    because the other end of the strip genuinely is one. */
-.jrn-end u{display:block;text-decoration:none;font-size:10px;font-weight:600;
+.jrn-end u{display:block;text-decoration:none;font-size:11px;font-weight:600;
   letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
 /* The invitation form standing in for the Register button. */
 .attend.wide{display:grid;grid-template-columns:1fr auto;gap:var(--sp-2)}
@@ -415,7 +423,7 @@
 .subscribe-note.good{color:var(--t-global)}
 .subscribe-note.bad{color:var(--t-social)}
 .attend-opt{flex-basis:100%;grid-column:1/-1;display:flex;align-items:center;gap:8px;
-  font-size:12.5px;color:var(--ink-3);margin-top:var(--sp-1);cursor:pointer}
+  font-size:12.5px;color:var(--ink-3);margin-top:var(--sp-1);cursor:pointer;min-height:28px}
 /* flex:none, or the grid stretches the box into a rectangle. */
 .attend-opt input{width:15px;height:15px;flex:none;accent-color:var(--accent);margin:0}
 
@@ -446,3 +454,28 @@
 .timeswitch.on{background:var(--accent-soft);color:var(--accent)}
 .timeswitch:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:520px){.timeswitch span{display:none}.timeswitch{padding:0 10px}}
+
+/* --- links inside running text -------------------------------------------
+   The base rule strips every anchor of colour and underline so that cards, chips and buttons
+   can be links without looking like them. The cost is that a genuine link inside a sentence —
+   "Open it in Google Calendar", "leave the list" — reads as ordinary text and nobody presses
+   it. These are the places where an anchor IS a link and has to look like one. */
+.addcal-note a, .subscribe-note a, .unsub-note a, .micro a,
+.banner a, .empty a, .pcard p a, .unsub p a {
+  color:var(--accent-2);
+  text-decoration:underline;
+  text-decoration-thickness:1px;
+  text-underline-offset:3px;
+  text-decoration-color:color-mix(in srgb, var(--accent-2) 45%, transparent);
+  font-weight:500;
+}
+.addcal-note a:hover, .subscribe-note a:hover, .unsub-note a:hover, .micro a:hover,
+.banner a:hover, .empty a:hover, .pcard p a:hover, .unsub p a:hover {
+  text-decoration-color:currentColor;
+}
+.addcal-note a:focus-visible, .subscribe-note a:focus-visible, .unsub-note a:focus-visible,
+.micro a:focus-visible, .banner a:focus-visible, .pcard p a:focus-visible {
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;
+}
+/* Inside a success note the link has to stay legible against the green, not fight it. */
+.addcal-note.good a, .subscribe-note.good a, .unsub-note.good a { color:var(--t-global) }

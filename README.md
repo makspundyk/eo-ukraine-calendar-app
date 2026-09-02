@@ -139,6 +139,7 @@ That convenience exists locally only; Cloudflare always uses its own secrets.
 | `npm test` | the sheet parser, against fixtures. No network, no credentials |
 | `npm run data` | regenerate the demo data from the legacy snapshot |
 | `npm run shots` | screenshot every view; fails on a console error |
+| `npm run responsive` | every page at seven widths, 320px to 1680px: sideways scroll, overflow, tap targets, unreadable type |
 
 ## The demo data path
 
