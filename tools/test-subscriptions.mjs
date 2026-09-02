@@ -93,8 +93,11 @@ check('the right row is ticked',
 reset([['a@x.com', '2026-01-01', 'A', false, 'tok-a']]);
 r = await unsubscribe(env, { token: 'not-a-real-token' });
 check('a wrong token changes nothing', wrote.length === 0);
+const wrongTokenAnswer = r.message;
+reset([['a@x.com', '2026-01-01', 'A', true, 'tok-a']]);
 check('...and the answer is identical to a used one, so tokens cannot be probed',
-  r.message === 'That unsubscribe link is not valid.');
+  wrongTokenAnswer === (await unsubscribe(env, { token: 'another-wrong-one' })).message,
+  wrongTokenAnswer);
 r = await unsubscribe(env, {});
 check('nothing at all is refused', r.ok === false);
 
