@@ -14,13 +14,46 @@ be short: **22 columns, three of them required.**
    earliest first, and puts every event with an empty `Start Date` in the "Dates to be
    confirmed" section at the foot of the feed. Sort the sheet however suits you.
 
-### There is no ID column
+### There is no required ID column
 
-The event's web address is built from its `Title`. That keeps the sheet to things a human
-would actually type — but it has one consequence worth knowing: **rename an event and its link
-changes.** Anyone who bookmarked or shared the old link lands on "not in the calendar".
+An event's web address is built from two things you already type:
 
-So fix typos freely before you announce an event, and treat the title as settled afterwards.
+```
+Title              ->  forum-test-drive
+Start Date         ->  forum-test-drive-2026-03-10
+```
+
+**The date is always part of the link**, not only when two events share a title. That is what
+makes two Forum Test Drives in the same season safe: they get different addresses because they
+are on different days, and neither depends on where its row happens to sit in the sheet. You
+can sort and re-sort the sheet freely; no link ever moves to a different event.
+
+An event with no `Start Date` yet uses the title alone. When you fill the date in, its address
+gains the date — and the old short link still works, as long as only one event has that title.
+
+Two things follow, both worth knowing:
+
+* **Rename an event and its link changes.** Anyone holding the old link lands on "not in the
+  calendar". Fix typos freely before you announce an event; treat the title as settled after.
+* **Move an event to a different date and its link changes too** — which is usually the moment
+  you re-send the link anyway.
+
+Same title *and* same date is separated by `Start Time`, so a morning and an evening session
+of the same thing both work. Two rows identical in title, date, time, place and link are the
+same event typed twice; the calendar still shows both, but flags it, because at that point
+only the row number tells them apart and that is not stable.
+
+### If you want links that never change
+
+Add one optional column, **`Slug`**, and put a short lowercase name in it:
+
+```
+Slug              forum-spring-2026
+```
+
+When it is filled it becomes the address, and nothing you do to the title or the date will
+alter it. Leave it empty and the rule above applies. It is not one of the 22 columns and is
+never required — reach for it only if permanent links matter to you.
 
 ---
 

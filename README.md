@@ -66,6 +66,10 @@ sheet cannot be read.
 startup log only; the secrets are server-side either way, and no browser code depends on it.
 Nothing breaks if it is unset.
 
+Event ids are `title-slug-YYYY-MM-DD`, computed from the whole set of rows at once rather
+than row by row, so re-sorting the sheet can never move a link from one event to another. An
+optional `Slug` column overrides it. See [`docs/SHEET.md`](docs/SHEET.md).
+
 **The range defaults to `EventCalendar!A1:V9999`, not `A3:V9999`.** This project reads the
 sheet *by header name* (rule 1 of [`docs/SHEET.md`](docs/SHEET.md)), so the header row has to
 be inside the range — `A3` would cut it off and there would be nothing to map columns by. The

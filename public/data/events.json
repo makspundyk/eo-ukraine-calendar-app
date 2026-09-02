@@ -69,28 +69,16 @@
       "applied_fix": "title taken from Description, speaker from Name"
     },
     {
-      "kind": "duplicate_row",
-      "row": 6,
-      "detail": "\"Experience Share event with Forbes Ukraine Entrepreneur 2025\" appears 2 times",
-      "applied_fix": "kept as separate sessions; only one of them carries a date"
-    },
-    {
-      "kind": "duplicate_row",
-      "row": 9,
-      "detail": "\"Forum Test Drive\" appears 2 times",
-      "applied_fix": "kept as separate sessions; only one of them carries a date"
-    },
-    {
-      "kind": "duplicate_row",
+      "kind": "duplicate_identity",
       "row": 10,
-      "detail": "\"Forum Test Drive\" appears 3 times",
-      "applied_fix": "kept as separate sessions; only one of them carries a date"
+      "detail": "\"Forum Test Drive\" is indistinguishable from an earlier row",
+      "applied_fix": "separated by row number; add a Slug column to give it a stable link"
     },
     {
-      "kind": "duplicate_row",
+      "kind": "duplicate_identity",
       "row": 11,
-      "detail": "\"Forum Test Drive\" appears 4 times",
-      "applied_fix": "kept as separate sessions; only one of them carries a date"
+      "detail": "\"Forum Test Drive\" is indistinguishable from an earlier row",
+      "applied_fix": "separated by row number; add a Slug column to give it a stable link"
     },
     {
       "kind": "typo",
@@ -145,29 +133,11 @@
       "row": 20,
       "detail": "\"GLobal / Regional\"",
       "applied_fix": "read as “Global & regional”"
-    },
-    {
-      "kind": "missing_content",
-      "row": 9,
-      "detail": "\"Forum Test Drive\" has no summary or image",
-      "applied_fix": "a format-based fallback image is used; the row still needs a summary"
-    },
-    {
-      "kind": "missing_content",
-      "row": 10,
-      "detail": "\"Forum Test Drive\" has no summary or image",
-      "applied_fix": "a format-based fallback image is used; the row still needs a summary"
-    },
-    {
-      "kind": "missing_content",
-      "row": 11,
-      "detail": "\"Forum Test Drive\" has no summary or image",
-      "applied_fix": "a format-based fallback image is used; the row still needs a summary"
     }
   ],
   "data": [
     {
-      "id": "forbes-books-how-to-write-and-publish-a-book",
+      "id": "forbes-books-how-to-write-and-publish-a-book-2026-05-18",
       "title": "Forbes Books - How to Write and Publish a Book",
       "speaker": "Joe Gregory, the Authority Company, part of Forbes Books",
       "description": "Most founders know a book would help them. Almost none know what the process costs in time, money or attention, so it stays on the list for years.\n\nJoe Gregory has built the publishing arm behind Forbes Books and has taken hundreds of founders from “I should write something” to a printed book. He walks through the whole route: choosing the idea that is worth 200 pages, the ghostwriting and hybrid models and what each really costs, the timeline from first outline to print, and the distribution that decides whether anyone reads it.\n\nBring a rough idea. You will leave knowing whether it is a book, an article, or nothing.",
@@ -183,9 +153,9 @@
       "is_online": true,
       "owner": "Nata / Yevgen",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/forbes-books-how-to-write-and-publish-a-book",
+      "registration_url": "https://eonetwork.org/ukraine/register/forbes-books-how-to-write-and-publish-a-book-2026-05-18",
       "cover": {
-        "hue": 203,
+        "hue": 326,
         "kind": "learning"
       },
       "source_row": 2,
@@ -206,7 +176,7 @@
       "speaker_name": "Joe Gregory"
     },
     {
-      "id": "legal-tax-risks-for-ukrainian-founders-abroad",
+      "id": "legal-tax-risks-for-ukrainian-founders-abroad-2026-06-08",
       "title": "Legal & Tax Risks for Ukrainian Founders abroad",
       "speaker": "Illya Sverdlov, Imagive Lawyers, parner",
       "description": "Moving yourself is simple. Moving a company, or leaving one behind, is not.\n\nIllya Sverdlov works with Ukrainian founders who now live in one country, employ people in a second and invoice from a third. He covers the questions that decide the tax bill: where you are actually resident, when a foreign team creates a permanent establishment, how CFC rules bite, and what a holding structure does and does not solve.\n\nReal cases, and the mistakes that were expensive to unwind.",
@@ -222,9 +192,9 @@
       "is_online": true,
       "owner": "Nata / Yevgen",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/legal-tax-risks-for-ukrainian-founders-abroad",
+      "registration_url": "https://eonetwork.org/ukraine/register/legal-tax-risks-for-ukrainian-founders-abroad-2026-06-08",
       "cover": {
-        "hue": 111,
+        "hue": 268,
         "kind": "learning"
       },
       "source_row": 3,
@@ -245,7 +215,7 @@
       "speaker_name": "Illya Sverdlov"
     },
     {
-      "id": "experience-share-event-with-forbes-ukraine-entrepreneur-2025",
+      "id": "experience-share-event-with-forbes-ukraine-entrepreneur-2025-2026-07-13",
       "title": "Experience Share event with Forbes Ukraine Entrepreneur 2025",
       "speaker": "Vitaliy Diatlenko, UKLON",
       "description": "An unvarnished experience share. Vitaliy Diatlenko has run UKLON through blackouts, mobilisation and a collapsed unit economy, and rebuilt it into a business that grew through all of it.\n\nNo slides about resilience. What broke, what he tried, what he would not do again, and the numbers behind each call. Members ask anything for the last half hour.",
@@ -261,9 +231,9 @@
       "is_online": true,
       "owner": "Nata / Yevgen",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/experience-share-event-with-forbes-ukraine-entrepreneur-2025",
+      "registration_url": "https://eonetwork.org/ukraine/register/experience-share-event-with-forbes-ukraine-entrepreneur-2025-2026-07-13",
       "cover": {
-        "hue": 276,
+        "hue": 149,
         "kind": "learning"
       },
       "source_row": 4,
@@ -284,7 +254,7 @@
       "speaker_name": "Vitaliy Diatlenko"
     },
     {
-      "id": "placeholder-legal-casestudy",
+      "id": "placeholder-legal-casestudy-2026-08-17",
       "title": "placeholder - legal casestudy",
       "speaker": "Constantin Solyar, Tax Partner, Asters Law",
       "description": "The session is confirmed and the speaker is booked; the case has not been chosen yet. Register to be told first when it is.",
@@ -300,9 +270,9 @@
       "is_online": true,
       "owner": "Nata / Yevgen",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/placeholder-legal-casestudy",
+      "registration_url": "https://eonetwork.org/ukraine/register/placeholder-legal-casestudy-2026-08-17",
       "cover": {
-        "hue": 257,
+        "hue": 304,
         "kind": "learning"
       },
       "source_row": 5,
@@ -318,10 +288,10 @@
       "speaker_name": "Constantin Solyar"
     },
     {
-      "id": "experience-share-event-with-forbes-ukraine-entrepreneur-2025-2",
+      "id": "experience-share-event-with-forbes-ukraine-entrepreneur-2025-2026-08-31",
       "title": "Experience Share event with Forbes Ukraine Entrepreneur 2025",
       "speaker": "Polina Kosharna, SUZIRIA",
-      "description": "Polina Kosharna built SUZIRIA into a brand people seek out rather than settle for. She takes apart how it happened: the positioning bet, the years before it paid, and the operational grind behind a brand that looks effortless.\n\nCandid on margins, on the hires that mattered, and on the point where she nearly stopped.",
+      "description": "An unvarnished experience share. Vitaliy Diatlenko has run UKLON through blackouts, mobilisation and a collapsed unit economy, and rebuilt it into a business that grew through all of it.\n\nNo slides about resilience. What broke, what he tried, what he would not do again, and the numbers behind each call. Members ask anything for the last half hour.",
       "kind": "learning",
       "type_label": "Learning event",
       "start": "2026-08-31",
@@ -334,30 +304,30 @@
       "is_online": true,
       "owner": "Nata / Yevgen",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/experience-share-event-with-forbes-ukraine-entrepreneur-2025-2",
+      "registration_url": "https://eonetwork.org/ukraine/register/experience-share-event-with-forbes-ukraine-entrepreneur-2025-2026-08-31",
       "cover": {
-        "hue": 23,
+        "hue": 306,
         "kind": "learning"
       },
       "source_row": 6,
-      "summary": "Building a consumer brand that people choose on purpose — and what it costs.",
+      "summary": "Scaling a marketplace through a war economy — the decisions, in the founder’s own words.",
       "highlights": [
-        "Positioning as a decision, not a slogan",
-        "What brand actually costs in a small market",
-        "The hires that changed the trajectory",
+        "Holding a team together when half of it is being mobilised",
+        "Pricing and unit economics under permanent uncertainty",
+        "What he cut first, and what he protected",
         "Open Q&A — members only"
       ],
-      "who_for": "Consumer founders, and anyone whose product is becoming a commodity.",
-      "speaker_title": "Founder, SUZIRIA",
+      "who_for": "Any member scaling through disruption. Especially useful for marketplaces.",
+      "speaker_title": "CEO, UKLON",
       "date_note": "",
       "speaker_bio": "Forbes Ukraine Entrepreneur of the Year 2025.",
       "venue": "Online",
-      "image_url": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1600&q=70",
+      "image_url": "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=1600&q=70",
       "image_credit": "Unsplash",
       "speaker_name": "Polina Kosharna"
     },
     {
-      "id": "forum-test-drive",
+      "id": "forum-test-drive-2026-09-16",
       "title": "Forum Test Drive",
       "speaker": "",
       "description": "Forum is the part of EO members talk about years later, and it is almost impossible to explain. So this is not an explanation.\n\nYou sit in a facilitated session run exactly as a forum runs: the protocol, the 5%/95% rule, experience shared rather than advice given, and total confidentiality. Eight people, ninety minutes, one real issue each.\n\nOpen to members and to prospective members you bring.",
@@ -373,9 +343,9 @@
       "is_online": true,
       "owner": "Max",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive",
+      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-2026-09-16",
       "cover": {
-        "hue": 157,
+        "hue": 103,
         "kind": "forum"
       },
       "source_row": 8,
@@ -396,7 +366,7 @@
       "speaker_name": ""
     },
     {
-      "id": "resilience-tour",
+      "id": "resilience-tour-2026-10-01",
       "title": "Resilience Tour",
       "speaker": "",
       "description": "A chapter tour built around one question: what does a company do when the ground moves under it?\n\nFive days across Kyiv and Lviv visiting members’ businesses — manufacturing, logistics, retail, tech — with the founders walking you through what they changed and what it cost. Evenings are for the conversations that only happen in person.\n\nNumbers are limited by the site visits.",
@@ -412,9 +382,9 @@
       "is_online": false,
       "owner": "Serhii",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/resilience-tour",
+      "registration_url": "https://eonetwork.org/ukraine/register/resilience-tour-2026-10-01",
       "cover": {
-        "hue": 303,
+        "hue": 145,
         "kind": "chapter"
       },
       "source_row": 12,
@@ -435,7 +405,7 @@
       "speaker_name": ""
     },
     {
-      "id": "european-leadership-conference-elc-2026-krakow-poland",
+      "id": "european-leadership-conference-elc-2026-krakow-poland-2026-10-06",
       "title": "European Leadership Conference (ELC) 2026 - Krakow, Poland",
       "speaker": "",
       "description": "ELC is where the people who run EO in Europe compare notes. Chapter presidents, learning chairs, membership chairs and staff, in one room for three days.\n\nTrack-based: leadership development, chapter operations, and the regional strategy for the year ahead. Immediately before EO Unlimited, so most attendees stay for both.",
@@ -451,9 +421,9 @@
       "is_online": false,
       "owner": "",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/european-leadership-conference-elc-2026-krakow-poland",
+      "registration_url": "https://eonetwork.org/ukraine/register/european-leadership-conference-elc-2026-krakow-poland-2026-10-06",
       "cover": {
-        "hue": 279,
+        "hue": 212,
         "kind": "global"
       },
       "source_row": 13,
@@ -474,7 +444,7 @@
       "speaker_name": ""
     },
     {
-      "id": "eo-unlimited-krakow-poland",
+      "id": "eo-unlimited-krakow-poland-2026-10-07",
       "title": "EO Unlimited - Krakow, Poland",
       "speaker": "",
       "description": "<p>EO Unlimited 2026 Kraków <strong>isn’t another business conference</strong> — it’s a turning point. For three days, 300 of the world’s most visionary entrepreneurs gather in one of Europe’s most iconic cities to rethink, reshape and lead transformation.</p><h3>What the three days look like</h3><ul><li>Main-stage speakers, each one a founder who has done the thing they are talking about</li><li>Deep-dive sessions <em>chosen by the attendees</em>, not by a programme committee</li><li>The unstructured time that is the real reason people come</li></ul><p>The partner programme runs alongside the whole event. Full agenda on the <a href=\"https://eonetwork.org/unlimited\">EO Unlimited site</a>.</p><div style=\"color:red\" onclick=\"alert(1)\">This div, its style and its onclick are stripped; these words survive.</div><script>alert(\"this never runs\")</script>",
@@ -490,9 +460,9 @@
       "is_online": false,
       "owner": "",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/eo-unlimited-krakow-poland",
+      "registration_url": "https://eonetwork.org/ukraine/register/eo-unlimited-krakow-poland-2026-10-07",
       "cover": {
-        "hue": 241,
+        "hue": 59,
         "kind": "global"
       },
       "source_row": 14,
@@ -513,7 +483,7 @@
       "speaker_name": ""
     },
     {
-      "id": "chapter-retreat",
+      "id": "chapter-retreat-2026-11-10",
       "title": "Chapter Retreat",
       "speaker": "",
       "description": "The chapter retreat is deliberately unlike every other event: no stage, no agenda imposed from outside, and enough time for conversations to get past the first layer.\n\nSix days in Malta. Mornings are structured — member-led sessions and forum work. Afternoons and evenings are not. Partners are welcome and most members bring them.",
@@ -529,9 +499,9 @@
       "is_online": false,
       "owner": "Serhii",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/chapter-retreat",
+      "registration_url": "https://eonetwork.org/ukraine/register/chapter-retreat-2026-11-10",
       "cover": {
-        "hue": 121,
+        "hue": 17,
         "kind": "chapter"
       },
       "source_row": 7,
@@ -552,7 +522,7 @@
       "speaker_name": ""
     },
     {
-      "id": "presidents-meeting-2027-mont-tremblant-canada",
+      "id": "presidents-meeting-2027-mont-tremblant-canada-2027-02-23",
       "title": "Presidents Meeting 2027 - Mont Tremblant, Canada",
       "speaker": "",
       "description": "Presidents Meeting 2027 brings together chapter presidents and chapter staff from across Europe, Canada and the LAC regions.\n\nAll chapter staff are invited to a dedicated training day beforehand, with arrivals on 22 February. The meeting itself begins for all attendees on 23 February.",
@@ -568,9 +538,9 @@
       "is_online": false,
       "owner": "",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/presidents-meeting-2027-mont-tremblant-canada",
+      "registration_url": "https://eonetwork.org/ukraine/register/presidents-meeting-2027-mont-tremblant-canada-2027-02-23",
       "cover": {
-        "hue": 174,
+        "hue": 261,
         "kind": "global"
       },
       "source_row": 15,
@@ -591,7 +561,7 @@
       "speaker_name": ""
     },
     {
-      "id": "emea-moderator-summit",
+      "id": "emea-moderator-summit-2027-03-18",
       "title": "EMEA Moderator Summit",
       "speaker": "",
       "description": "The EMEA Moderator Summit is the annual leadership and training event for forum moderators, run with the Europe and MEPA regions.\n\nTwo days of moderator craft: handling the difficult session, keeping the protocol when a group drifts, and the practice that separates a forum that lasts from one that fades.",
@@ -607,9 +577,9 @@
       "is_online": false,
       "owner": "",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/emea-moderator-summit",
+      "registration_url": "https://eonetwork.org/ukraine/register/emea-moderator-summit-2027-03-18",
       "cover": {
-        "hue": 82,
+        "hue": 273,
         "kind": "global"
       },
       "source_row": 16,
@@ -630,7 +600,7 @@
       "speaker_name": ""
     },
     {
-      "id": "global-leadership-conference-2027",
+      "id": "global-leadership-conference-2027-2027-04-11",
       "title": "Global Leadership Conference 2027",
       "speaker": "",
       "description": "EO’s Global Leadership Conference is the organisation’s flagship event, uniting member leaders from around the world for an immersive experience in learning, growth and connection.\n\nThe 30th GLC coincides with Kyoto’s cherry blossom season. New for 2027: a dedicated SLP track alongside the main programme.",
@@ -646,9 +616,9 @@
       "is_online": false,
       "owner": "",
       "guests_welcome": false,
-      "registration_url": "https://eonetwork.org/ukraine/register/global-leadership-conference-2027",
+      "registration_url": "https://eonetwork.org/ukraine/register/global-leadership-conference-2027-2027-04-11",
       "cover": {
-        "hue": 314,
+        "hue": 148,
         "kind": "global"
       },
       "source_row": 17,
@@ -703,10 +673,10 @@
       "speaker_name": ""
     },
     {
-      "id": "forum-test-drive-2",
+      "id": "forum-test-drive",
       "title": "Forum Test Drive",
       "speaker": "",
-      "description": "",
+      "description": "Forum is the part of EO members talk about years later, and it is almost impossible to explain. So this is not an explanation.\n\nYou sit in a facilitated session run exactly as a forum runs: the protocol, the 5%/95% rule, experience shared rather than advice given, and total confidentiality. Eight people, ninety minutes, one real issue each.\n\nOpen to members and to prospective members you bring.",
       "kind": "forum",
       "type_label": "Forum test drive",
       "start": null,
@@ -719,15 +689,20 @@
       "is_online": true,
       "owner": "Max",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-2",
+      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive",
       "cover": {
-        "hue": 303,
+        "hue": 157,
         "kind": "forum"
       },
       "source_row": 9,
-      "summary": "",
-      "highlights": [],
-      "who_for": "",
+      "summary": "Ninety minutes inside a real EO forum — the format, not a description of it.",
+      "highlights": [
+        "The forum protocol, run properly",
+        "Experience-sharing instead of advice — and why the difference matters",
+        "What confidentiality actually means in practice",
+        "Whether forum is for you, answered by doing it"
+      ],
+      "who_for": "New members, and prospective members you would like to introduce.",
       "speaker_title": "",
       "date_note": "",
       "speaker_bio": "",
@@ -737,10 +712,10 @@
       "speaker_name": ""
     },
     {
-      "id": "forum-test-drive-3",
+      "id": "forum-test-drive-r10",
       "title": "Forum Test Drive",
       "speaker": "",
-      "description": "",
+      "description": "Forum is the part of EO members talk about years later, and it is almost impossible to explain. So this is not an explanation.\n\nYou sit in a facilitated session run exactly as a forum runs: the protocol, the 5%/95% rule, experience shared rather than advice given, and total confidentiality. Eight people, ninety minutes, one real issue each.\n\nOpen to members and to prospective members you bring.",
       "kind": "forum",
       "type_label": "Forum test drive",
       "start": null,
@@ -753,15 +728,20 @@
       "is_online": true,
       "owner": "Max",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-3",
+      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-r10",
       "cover": {
-        "hue": 51,
+        "hue": 84,
         "kind": "forum"
       },
       "source_row": 10,
-      "summary": "",
-      "highlights": [],
-      "who_for": "",
+      "summary": "Ninety minutes inside a real EO forum — the format, not a description of it.",
+      "highlights": [
+        "The forum protocol, run properly",
+        "Experience-sharing instead of advice — and why the difference matters",
+        "What confidentiality actually means in practice",
+        "Whether forum is for you, answered by doing it"
+      ],
+      "who_for": "New members, and prospective members you would like to introduce.",
       "speaker_title": "",
       "date_note": "",
       "speaker_bio": "",
@@ -771,10 +751,10 @@
       "speaker_name": ""
     },
     {
-      "id": "forum-test-drive-4",
+      "id": "forum-test-drive-r11",
       "title": "Forum Test Drive",
       "speaker": "",
-      "description": "",
+      "description": "Forum is the part of EO members talk about years later, and it is almost impossible to explain. So this is not an explanation.\n\nYou sit in a facilitated session run exactly as a forum runs: the protocol, the 5%/95% rule, experience shared rather than advice given, and total confidentiality. Eight people, ninety minutes, one real issue each.\n\nOpen to members and to prospective members you bring.",
       "kind": "forum",
       "type_label": "Forum test drive",
       "start": null,
@@ -787,15 +767,20 @@
       "is_online": true,
       "owner": "Max",
       "guests_welcome": true,
-      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-4",
+      "registration_url": "https://eonetwork.org/ukraine/register/forum-test-drive-r11",
       "cover": {
-        "hue": 298,
+        "hue": 348,
         "kind": "forum"
       },
       "source_row": 11,
-      "summary": "",
-      "highlights": [],
-      "who_for": "",
+      "summary": "Ninety minutes inside a real EO forum — the format, not a description of it.",
+      "highlights": [
+        "The forum protocol, run properly",
+        "Experience-sharing instead of advice — and why the difference matters",
+        "What confidentiality actually means in practice",
+        "Whether forum is for you, answered by doing it"
+      ],
+      "who_for": "New members, and prospective members you would like to introduce.",
       "speaker_title": "",
       "date_note": "",
       "speaker_bio": "",

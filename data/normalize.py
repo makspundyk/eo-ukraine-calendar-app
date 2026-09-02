@@ -167,12 +167,17 @@ for i, r in enumerate(rows, start=2):        # row 1 is the header in the sheet
     if not place and online:
         place = 'Online'
 
-    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    # `base` is the title slug and stays the key for the editorial content in _content.py.
+    # `slug` is the event's URL and follows the same composite rule as lib/normalize.mjs:
+    # title + start date, never an encounter-order suffix, so re-sorting the sheet can never
+    # move a link from one event to another. See makeId() there for the full reasoning.
+    base = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    slug = f'{base}-{start.isoformat()}' if start else base
     seen_titles[slug] = seen_titles.get(slug, 0) + 1
     if seen_titles[slug] > 1:
-        issue('duplicate_row', i, f'"{title}" appears {seen_titles[slug]} times',
-              'kept as separate sessions; only one of them carries a date')
-        slug = f'{slug}-{seen_titles[slug]}'
+        issue('duplicate_identity', i, f'"{title}" is indistinguishable from an earlier row',
+              'separated by row number; add a Slug column to give it a stable link')
+        slug = f'{slug}-r{i}'
 
     events.append({
         'id': slug,
@@ -190,6 +195,7 @@ for i, r in enumerate(rows, start=2):        # row 1 is the header in the sheet
         'guests_welcome': 'leads could be invited' in (r.get('Audience') or '').lower(),
         # NOT IN THE SHEET. The one column that has to be added — see DESIGN.md.
         'registration_url': f'https://eonetwork.org/ukraine/register/{slug}',
+        'content_key': base,          # for the editorial merge below; not published
         'cover': cover(slug, kind, place),
         'source_row': i,
     })
@@ -198,7 +204,7 @@ for i, r in enumerate(rows, start=2):        # row 1 is the header in the sheet
 # Each of these becomes a sheet column. Merged here, not in the templates, so the UI cannot
 # tell the difference between a value the sheet supplied and one it did not.
 for ev in events:
-    c = CONTENT.get(ev['id'], {})
+    c = CONTENT.get(ev.pop('content_key'), {})
     ev['summary'] = c.get('summary') or ev['description'][:140] or ''
     if c.get('description'):
         ev['description'] = c['description']

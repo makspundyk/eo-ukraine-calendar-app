@@ -44,30 +44,32 @@ const grid = [
 ];
 
 const { events, issues } = normalizeRows(grid);
-const by = (id) => events.find((e) => e.id === id);
+// Looked up by title, not id: the id format is itself under test elsewhere and these
+// assertions are about parsing, so they should not have to change when it does.
+const by = (title) => events.find((e) => e.title === title);
 
 console.log('\nparsing a sheet that follows docs/SHEET.md');
 check('header found below a title row', true);
-check('Draft and Cancelled rows are not published', !by('secret-party') && !by('called-off'));
+check('Draft and Cancelled rows are not published', !by('Secret party') && !by('Called off'));
 check('blank rows are skipped, not counted', events.length === 4, `got ${events.length}`);
 check('sorted by start date, undated last',
-  events.map((e) => e.id).join(',') === 'elc-2026,how-to-write-a-book,bad-data,retreat',
-  events.map((e) => e.id).join(','));
-check('multi-day span kept', by('elc-2026').end === '2026-10-08');
+  events.map((e) => e.title).join(',') === 'ELC 2026,How to Write a Book,Bad data,Retreat',
+  events.map((e) => e.title).join(','));
+check('multi-day span kept', by('ELC 2026').end === '2026-10-08');
 check('undated row is flagged and keeps its note',
-  by('retreat').date_tbc === true && by('retreat').date_note === 'Expected spring 2027');
-check('checkbox TRUE becomes a boolean', by('how-to-write-a-book').guests_welcome === true);
-check('checkbox blank becomes false', by('elc-2026').guests_welcome === false);
-check('highlights split one per line', by('how-to-write-a-book').highlights.length === 3);
-check('Online sets is_online', by('how-to-write-a-book').is_online === true);
-check('times normalised', by('how-to-write-a-book').time_start === '15:30');
+  by('Retreat').date_tbc === true && by('Retreat').date_note === 'Expected spring 2027');
+check('checkbox TRUE becomes a boolean', by('How to Write a Book').guests_welcome === true);
+check('checkbox blank becomes false', by('ELC 2026').guests_welcome === false);
+check('highlights split one per line', by('How to Write a Book').highlights.length === 3);
+check('Online sets is_online', by('How to Write a Book').is_online === true);
+check('times normalised', by('How to Write a Book').time_start === '15:30');
 check('"3:30pm" recovered as 15:30 and reported',
-  by('bad-data').time_start === '15:30' && issues.some((i) => i.kind === 'time_not_hhmm'));
+  by('Bad data').time_start === '15:30' && issues.some((i) => i.kind === 'time_not_hhmm'));
 check('unreadable date -> date_tbc, not a crash',
-  by('bad-data').date_tbc === true && issues.some((i) => i.kind === 'unreadable_date'));
+  by('Bad data').date_tbc === true && issues.some((i) => i.kind === 'unreadable_date'));
 check('javascript: registration link dropped',
-  by('bad-data').registration_url === '' && issues.some((i) => i.kind === 'unsafe_url'));
-check('missing image falls back by type', by('elc-2026').image_url.startsWith('https://'));
+  by('Bad data').registration_url === '' && issues.some((i) => i.kind === 'unsafe_url'));
+check('missing image falls back by type', by('ELC 2026').image_url.startsWith('https://'));
 
 console.log('\nnothing internal reaches the public payload');
 const published = JSON.stringify(events.map(stripInternal));
@@ -93,6 +95,52 @@ check('a fully reversed column order still parses',
   re.length === 1 && re[0].title === 'Reordered' && re[0].start === '2026-12-01');
 
 // DEMO=1 has to hold even with perfect credentials, so the trip-wire counts outbound calls.
+// The bug this replaced: ids were slug(title) with a -2 suffix by encounter order, so
+// re-sorting the sheet swapped two events' URLs and a shared link opened the WRONG event.
+console.log('\nevent ids survive the sheet being re-sorted');
+const IDH = ['Type','Title','Start Date','Start Time','Location','Registration URL','Slug'];
+const idRows = (list) => [IDH, ...list.map((o) => IDH.map((h) => o[h] ?? ''))];
+const A = { Type:'Social', Title:'Forum Test Drive', 'Start Date':'2026-03-10',
+            Location:'Kyiv', 'Registration URL':'https://e.org/a' };
+const B = { Type:'Social', Title:'Forum Test Drive', 'Start Date':'2026-06-20',
+            Location:'Lviv', 'Registration URL':'https://e.org/b' };
+
+const idsOf = (list) => normalizeRows(idRows(list)).events
+  .map((e) => `${e.id}@${e.place}`).sort().join(',');
+check('same rows in either order produce the same ids',
+  idsOf([A, B]) === idsOf([B, A]), `${idsOf([A, B])}  vs  ${idsOf([B, A])}`);
+check('the id carries the date, so same-title events never collide',
+  normalizeRows(idRows([A, B])).events.every((e) => /-20\d\d-\d\d-\d\d$/.test(e.id)));
+check('no encounter-order suffix is produced',
+  !normalizeRows(idRows([A, B])).events.some((e) => /-2$/.test(e.id)));
+
+const sameDay = [
+  { ...A, 'Start Time':'09:00' },
+  { ...A, 'Start Time':'18:00', Location:'Lviv', 'Registration URL':'https://e.org/c' },
+];
+const sd = normalizeRows(idRows(sameDay)).events;
+check('same title AND same date are separated by start time',
+  new Set(sd.map((e) => e.id)).size === 2, sd.map((e) => e.id).join(','));
+check('...and that is order-independent',
+  idsOf(sameDay) === idsOf([sameDay[1], sameDay[0]]));
+
+const twins = [A, { ...A }];
+const tw = normalizeRows(idRows(twins));
+check('two rows identical in every field still get distinct ids',
+  new Set(tw.events.map((e) => e.id)).size === 2);
+check('...and that case is reported as needing a Slug column',
+  tw.issues.some((i) => i.kind === 'unresolvable_duplicate'));
+
+const withSlug = normalizeRows(idRows([{ ...A, Slug:'forum-spring' },
+                                       { ...B, Slug:'forum-summer' }])).events;
+check('an explicit Slug column wins over the composite id',
+  withSlug.map((e) => e.id).sort().join(',') === 'forum-spring,forum-summer',
+  withSlug.map((e) => e.id).join(','));
+
+const undated = normalizeRows(idRows([{ Type:'Social', Title:'Retreat',
+  'Registration URL':'https://e.org/r' }])).events;
+check('an undated event keeps the bare title slug', undated[0].id === 'retreat');
+
 console.log('\nDEMO switch');
 const realFetch = globalThis.fetch;
 let calls = 0;

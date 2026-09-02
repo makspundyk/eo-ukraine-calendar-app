@@ -12,10 +12,21 @@ export const useEventsApi = () => ({
   /** Everything, plus the season label and the data issues the normaliser found. */
   all: () => fetchEvents(),
 
-  /** GET one event by id. */
+  /**
+   * GET one event by id.
+   *
+   * An id is `title-slug-YYYY-MM-DD`. The exact match is tried first, then — only when it
+   * resolves to exactly ONE event — a bare title slug is accepted too. That covers the two
+   * cases where a real person's link would otherwise die: a link shared before the event had
+   * a date, and a link written by hand without one. Ambiguity is never guessed at: two events
+   * sharing a title means the short form resolves to neither.
+   */
   async byId(id) {
     const { data } = await fetchEvents();
-    return data.find((e) => e.id === id) ?? null;
+    const exact = data.find((e) => e.id === id);
+    if (exact) return exact;
+    const partial = data.filter((e) => e.id.startsWith(`${id}-`));
+    return partial.length === 1 ? partial[0] : null;
   },
 
   /**
