@@ -136,11 +136,24 @@ Three places it is caught:
 | When | What happens |
 |---|---|
 | As you mark a row Published | The row turns pink and the Status cell gets a note listing exactly what is missing. The note and the colour clear themselves when the row is fixed |
-| **EO Calendar → Check published rows** | Every incomplete published row, listed at once. Run it before announcing a season |
+| **EO Calendar → Check published rows** | Every incomplete published row, listed at once. Run it before announcing a season. It also clears flags from rows that are fine now |
 | Every sync | Incomplete rows are skipped, and the summary names them |
 
 **It does not revert the cell.** People set the status first and fill the row afterwards, and a
 script that undoes their typing gets switched off within a day. It flags, it does not fight.
+
+**Flags clear themselves.** A note and a red row are written the moment somebody marks a row
+Published, and they used to stay until that row was edited again — so when a rule changed,
+every row still wore the verdict of the old rule with no way to shift it. Both `Sync now` and
+`Check published rows` now take the flag off any row that is fine, and say how many they
+cleared.
+
+If the `Status` column carries a **data-validation help message**, that is text somebody typed
+into the sheet and no script can reach it. Data → Data validation → the Status column, and
+correct it there. It should now read something like:
+
+> Only "Published" makes a row public. A blank cell counts as Draft, so a half-finished row
+> stays private until you choose Published.
 
 ### When events are created, and when changes are sent
 

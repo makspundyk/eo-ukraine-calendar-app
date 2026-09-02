@@ -257,7 +257,9 @@ function checkAll() {
   var ctx = open_();
   if (!ctx) return;
   var lines = [];
+  var cleared = 0;
   eachRow_(ctx, function (row, i) {
+    if (clearFlagIfClean_(ctx, row, i)) cleared++;
     if (!isPublished_(row, ctx.map)) return;
     var bad = problems_(row, ctx.map);
     if (bad.length) lines.push('Row ' + (i + 1) + ': ' + bad.join('; '));
@@ -266,7 +268,8 @@ function checkAll() {
         + '"Dates to be confirmed", no calendar entry until a date is set');
     }
   });
-  tell_(lines.length ? lines.join('\n') : 'Every published row is complete.');
+  if (cleared) lines.push('', 'Cleared ' + cleared + ' stale flag(s) from rows that are fine now.');
+  tell_(lines.length ? lines.join('\n') : 'Every published row is complete, and nothing is flagged.');
 }
 
 /**
@@ -394,11 +397,17 @@ function syncNow() {
      'Invite Subscribers?', 'Subscribers Invited At']);
   ctx = open_();                                     // re-read: columns may have been added
 
-  var created = 0, updated = 0, cancelled = 0, revived = 0;
+  var created = 0, updated = 0, cancelled = 0, revived = 0, unflagged = 0;
   var skipped = [], failed = [];
 
   eachRow_(ctx, function (row, i) {
     var col = ctx.map;
+
+    // Clear a flag the row no longer deserves. A note and a red background are written at the
+    // moment somebody marks a row Published, and they stay until that row is edited again —
+    // so when a rule changes, every row still wears the verdict of the OLD rule and there is
+    // nothing a person can do about it except retype a cell. The sweep takes them off.
+    if (clearFlagIfClean_(ctx, row, i)) unflagged++;
     var eventId = String(get_(row, col, 'calendar_event_id') || '').trim();
     var published = isPublished_(row, col);
 
@@ -446,7 +455,8 @@ function syncNow() {
   });
 
   var summary = 'Created ' + created + ', updated ' + updated
-    + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled + '.';
+    + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled + '.'
+    + (unflagged ? '\nCleared ' + unflagged + ' stale "not ready" flag(s).' : '');
   if (skipped.length) summary += '\n\nNot in the calendar yet:\n' + skipped.join('\n');
   if (failed.length) summary += '\n\nProblems:\n' + failed.join('\n');
   tell_(summary);
@@ -801,6 +811,25 @@ function setStatus_(eventId, status) {
   if (!existing || existing.status === status) return false;
   try { Calendar.Events.patch({ status: status }, calendarId_(), eventId); return true; }
   catch (e) { Logger.log('Status change failed: ' + e.message); return false; }
+}
+
+/**
+ * Removes the "not ready" note and the red background from a row that is fine now.
+ * Returns whether anything was actually cleared, so a clean sheet costs no writes.
+ */
+function clearFlagIfClean_(ctx, row, i) {
+  if (ctx.map.status === undefined) return false;
+  if (isPublished_(row, ctx.map) && problems_(row, ctx.map).length) return false;
+
+  var cell = ctx.sheet.getRange(i + 1, ctx.map.status + 1);
+  var hadNote = !!cell.getNote();
+  var range = ctx.sheet.getRange(i + 1, 1, 1, Math.max(1, ctx.sheet.getLastColumn()));
+  var hadColour = range.getBackground() !== '#ffffff';
+
+  if (!hadNote && !hadColour) return false;
+  if (hadNote) cell.clearNote();
+  if (hadColour) range.setBackground(null);
+  return true;
 }
 
 /* ------------------------------------------------------------------ sheet io */
