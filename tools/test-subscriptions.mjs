@@ -22,6 +22,10 @@ globalThis.fetch = async (url, init = {}) => {
     wrote.push({ url: decodeURIComponent(u), body: JSON.parse(init.body) });
     return new Response('{}');
   }
+  if (u.includes('fields=sheets.properties')) {
+    return new Response(JSON.stringify({
+      sheets: [{ properties: { title: 'EventCalendarSubscriptions', sheetId: 42 } }] }));
+  }
   return new Response(JSON.stringify({ values: sheet }));
 };
 
