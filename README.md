@@ -21,6 +21,7 @@ npm run dev      # http://localhost:4100
 | `public/_headers` | Cloudflare Pages headers. `serve.mjs` applies them locally too |
 | `data/` | the sheet snapshot and the normaliser. **Not deployed** |
 | `docs/` | the sheet standard, the design brief, screenshots. **Not deployed** |
+| `public/src/identity.js` | the remembered address: storage, the question, the top-bar control |
 | `tools/` | `test-parser.mjs`, `shots.mjs`, `dev-cf.mjs` — none deployed |
 
 ## Where the calendar data comes from
@@ -140,6 +141,41 @@ That convenience exists locally only; Cloudflare always uses its own secrets.
 | `npm run data` | regenerate the demo data from the legacy snapshot |
 | `npm run shots` | screenshot every view; fails on a console error |
 | `npm run responsive` | every page at seven widths, 320px to 1680px: sideways scroll, overflow, tap targets, unreadable type |
+
+## The remembered address
+
+There is no account, and there must not be one: a chapter calendar that asks for a password
+before it will invite somebody to an evening has lost most of them at the password. What does
+cost people something is retyping the same address on every event, so that — and only that —
+is what is kept.
+
+| | |
+|---|---|
+| where | `localStorage`, in that browser. Never sent anywhere except when the member asks to be invited, exactly as if they had typed it |
+| when it is offered | **after** an invitation or a subscription has already succeeded, never before |
+| when it is offered again | never, if the answer was no. A prompt that comes back after a refusal is a nag, so the refusal is recorded and kept |
+| how it is taken back | the chip in the top bar, which shows the address in use and clears it in one press |
+
+Escape and the backdrop close the question without answering it — only the second button is a
+refusal, and only a refusal is recorded. Signing out clears the address and **not** the
+refusal: "not this address any more" is a different answer from "never offer again".
+
+Saving or clearing it does not redraw the page. It usually happens a second after a form has
+confirmed something — an invitation with its calendar link, or a subscription carrying the one
+unsubscribe link that person will ever be shown — so `identity.js` announces the change and
+`main.js` patches the three things that depend on it: the chip, the card buttons, and any
+empty email field. A field somebody has already typed a different address into is left alone.
+
+**What it changes on a card.** With an address remembered, *Add to calendar* on a card or a
+table row sends a real invitation in one press. Without one, the card links to the event page
+instead — a card has no room to explain what an email field is for, and an unexplained email
+box is the one thing nobody fills in. That link carries `?invite=1`, which scrolls the event
+page to the field and puts the cursor in it.
+
+Before this, a card handed out a **copy** of the event: a block in the member's own diary that
+no later change by the organiser could ever reach, and which never told the organiser anybody
+was coming. That path still exists, for events the sheet has not yet created a calendar event
+for, and only for those.
 
 ## The demo data path
 

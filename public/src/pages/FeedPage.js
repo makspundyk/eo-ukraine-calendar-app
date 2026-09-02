@@ -15,6 +15,8 @@ import * as EventCard from '../components/EventCard.js';
 import * as Timeline from '../components/Timeline.js';
 import { chip, register, action } from '../components/ui.js';
 import { escape as e, monthYear, placeLabel, displayDate } from '../format.js';
+import { savedEmail, savedName, maybeAsk } from '../identity.js';
+import { requestSubscription } from '../api/attend.js';
 
 export const meta = {
   id: 'V1', name: 'Feed', route: '#/', vue: 'pages/events/index.vue',
@@ -90,13 +92,11 @@ export function wireSubscribe() {
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const button = form.querySelector('button');
+    const email = form.email.value.trim();
+    const name = form.name.value.trim();
     button.disabled = true;
     try {
-      const res = await fetch('/api/subscribe', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: form.email.value, name: form.name.value }),
-      });
-      const body = await res.json();
+      const body = await requestSubscription({ email, name });
       note.className = `subscribe-note ${body.ok ? 'good' : 'bad'}`;
       // The unsubscribe link is shown once, here, to the person who just gave us the address.
       // It is the only place we can put it that is certainly them.
@@ -105,7 +105,15 @@ export function wireSubscribe() {
           + (body.unsubscribe
              ? ` <a href="${e(body.unsubscribe)}">Leave the list</a> whenever you like.` : '')
         : e(body.message || 'That did not work. Try again in a moment.');
-      if (body.ok) form.remove();
+      if (body.ok) {
+        form.remove();
+        // Asked only now, with the subscription already confirmed above it.
+        if (await maybeAsk(email, name)) {
+          note.insertAdjacentHTML('beforeend',
+            ' Your address is saved on this device, so asking for an invitation to a single'
+            + ' event is now one press.');
+        }
+      }
     } catch {
       note.className = 'subscribe-note bad';
       note.textContent = 'That did not work. Try again in a moment.';
@@ -192,8 +200,10 @@ export function render({ events, tbc, q, counts, facets }) {
         like; every invitation carries the way out.</span>
     </div>
     <form class="subscribe-form" data-subscribe>
-      <input type="text" name="name" autocomplete="name" placeholder="Your name" />
+      <input type="text" name="name" autocomplete="name" placeholder="Your name"
+             value="${e(savedName())}" />
       <input type="email" name="email" required autocomplete="email"
+             value="${e(savedEmail())}"
              placeholder="your@email.com" aria-label="Your email address" />
       <button type="submit" class="register sm">Keep me posted
         <span class="arr" aria-hidden="true">→</span></button>

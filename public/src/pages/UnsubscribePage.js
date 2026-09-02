@@ -15,6 +15,7 @@
  * your other link", which is not a way out at all.
  */
 import { escape as e } from '../format.js';
+import { savedEmail } from '../identity.js';
 
 export const meta = {
   id: 'V4', name: 'Unsubscribe', route: '#/unsubscribe/:token',
@@ -71,6 +72,7 @@ export function render({ token }) {
         future ones.</p>
       <form class="unsub-form" data-unsub-form>
         <input type="email" name="email" required autocomplete="email"
+               value="${e(savedEmail())}"
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="register" data-unsub>Unsubscribe
           <span class="arr" aria-hidden="true">→</span></button>

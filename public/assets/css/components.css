@@ -479,3 +479,79 @@
 }
 /* Inside a success note the link has to stay legible against the green, not fight it. */
 .addcal-note.good a, .subscribe-note.good a, .unsub-note.good a { color:var(--t-global) }
+
+/* ---- the remembered address ------------------------------------------ */
+/* The chip sits beside the times switch and is built to the same size, because they are the
+   same KIND of thing: two small statements about how this browser is set up, not navigation. */
+.me-wrap{position:relative}
+.me{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
+  border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-2);
+  font-size:12.5px;font-weight:600;max-width:170px;
+  transition:background .18s ease,color .18s ease}
+.me:hover{background:var(--surface-3);color:var(--ink)}
+.me.on{background:var(--accent-soft);color:var(--accent)}
+.me svg{width:13px;height:13px;flex:none}
+.me span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.me-pop{position:absolute;top:calc(100% + 10px);right:0;z-index:60;width:290px;
+  background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:var(--e3);padding:var(--sp-4)}
+.me-pop[hidden]{display:none}
+.me-pop label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.me-pop input{width:100%;height:38px;padding:0 13px;border:1px solid var(--rule);
+  border-radius:var(--r-pill);background:var(--surface-2);font:inherit;font-size:14px}
+.me-pop input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.me-act{display:flex;align-items:center;gap:var(--sp-3);margin-top:var(--sp-3)}
+.me-note{font-size:11.5px;line-height:1.5;color:var(--ink-3);margin-top:var(--sp-3)}
+/* The quiet half of a pair. It has to be plainly pressable and plainly not the main thing —
+   a second filled button would make declining look like the recommended answer. */
+.ask-no{font-size:12.5px;font-weight:600;color:var(--ink-2);text-decoration:underline;
+  text-underline-offset:3px;padding:6px 2px;min-height:28px}
+.ask-no:hover{color:var(--ink)}
+
+/* ---- the question ----------------------------------------------------- */
+.ask{border:0;border-radius:var(--r-lg);padding:var(--sp-6);max-width:400px;width:calc(100% - 32px);
+  background:var(--surface);color:var(--ink);box-shadow:var(--e3);font:inherit}
+.ask::backdrop{background:rgba(20,19,17,.34)}
+.ask h2{font-size:21px;margin-bottom:var(--sp-3)}
+.ask p{font-size:14px;line-height:1.6;color:var(--ink-2)}
+.ask p b{color:var(--ink);word-break:break-all}
+.ask-fine{font-size:12px;color:var(--ink-3);margin-top:var(--sp-3)}
+.ask-act{display:flex;align-items:center;gap:var(--sp-4);margin-top:var(--sp-5);flex-wrap:wrap}
+
+/* ---- toasts ----------------------------------------------------------- */
+/* Bottom centre on a phone, bottom left on a desktop: never under the sticky action bar on
+   the event page, which is the one place a member is most likely to press something. */
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sp-5) + 68px);
+  z-index:80;display:flex;flex-direction:column;gap:var(--sp-2);
+  width:min(430px,calc(100% - 32px));pointer-events:none}
+.toast{display:flex;align-items:center;gap:var(--sp-3);pointer-events:auto;
+  background:var(--ink);color:#fff;border-radius:var(--r);padding:12px var(--sp-4);
+  font-size:13.5px;line-height:1.45;box-shadow:var(--e3);
+  animation:toast-in .22s cubic-bezier(.2,.8,.3,1)}
+.toast.out{opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease}
+.toast span{flex:1}
+.toast a{color:#9FD0FF;text-decoration:underline;text-underline-offset:3px;
+  font-weight:600;white-space:nowrap}
+.toast.bad{background:var(--t-social)}
+.toast-x{flex:none;width:24px;height:24px;border-radius:50%;color:rgba(255,255,255,.7);
+  font-size:17px;line-height:1;display:grid;place-items:center}
+.toast-x:hover{color:#fff;background:rgba(255,255,255,.14)}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (min-width:721px){
+  .toasts{left:var(--sp-5);transform:none;bottom:var(--sp-5)}
+}
+
+/* A button that has done its job. Still readable, plainly finished. */
+.register.done{background:var(--t-global-soft);color:var(--t-global);cursor:default;
+  box-shadow:none;opacity:1}
+.register.done .arr{display:none}
+.register.done:hover{background:var(--t-global-soft);transform:none;box-shadow:none}
+
+@media (max-width:520px){
+  .me.on span{display:none}
+  .me{padding:0 10px}
+  .me-pop{width:min(290px,calc(100vw - 32px))}
+}

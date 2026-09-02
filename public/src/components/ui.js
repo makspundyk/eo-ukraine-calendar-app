@@ -1,5 +1,6 @@
 import { escape as e, hasPassed } from '../format.js';
 import { googleUrl } from '../ics.js';
+import { savedEmail } from '../identity.js';
 
 /** Small inline icons. Inline so the page has no asset dependency at all. */
 const P = {
@@ -16,15 +17,21 @@ export const chip = (label, kind = 'plain') =>
   `<span class="chip ${e(kind)}">${e(label)}</span>`;
 
 /**
- * The single action, identical on every surface. A member who has already decided should
- * never have to open another page to act.
- */
-/**
  * The action on a card or a row.
  *
- * With no registration link there is nothing to register for YET, so the calendar takes its
- * place rather than rendering a button that goes nowhere — pressing a dead Register button
- * reads as a broken site, not as registration being closed.
+ * Four outcomes, in the order a member benefits from them:
+ *
+ *   register       the chapter has a registration page — that is the real action, always
+ *   invite         the organiser has a calendar event AND we know the reader's address:
+ *                  one press puts them ON it and Google sends the invitation
+ *   ask            the organiser has an event and we do NOT know the address, so the card
+ *                  hands over to the event page, where there is room to ask for it
+ *   copy           no organiser event at all — a copy on their own calendar, second best
+ *
+ * The invite branch is the whole point. A card used to hand out a COPY of the event, which
+ * looks identical to the member and is not the same thing at all: it is a block in their own
+ * diary that no later change by the organiser can ever reach, and it never told the organiser
+ * anybody was coming. Now the card does what the event page does.
  */
 export const action = (ev, opts = {}) => {
   // Nothing to register for and nothing to put in a calendar once it is over. Offering either
@@ -32,13 +39,45 @@ export const action = (ev, opts = {}) => {
   if (hasPassed(ev)) return '';
   if (ev.registration_url) return register(ev.registration_url, opts);
   if (!ev.start) return '';
+
+  if (ev.invitable) {
+    const cls = `register ${opts.small ? 'sm' : ''} ${opts.ghost ? 'ghost' : ''}`;
+    return savedEmail() ? inviteButton(ev.id, cls) : inviteAsk(ev.id, cls);
+  }
   return register(googleUrl(ev, { origin: location.origin }),
     { ...opts, label: 'Add to calendar' });
 };
 
-export const register = (href, { small = false, ghost = false, label = 'Register' } = {}) => `
+const ADD = 'Add to calendar <span class="arr" aria-hidden="true">→</span>';
+
+/**
+ * One press: the remembered address goes onto the organiser's event.
+ *
+ * Wired once, from main.js, by delegation — a card is redrawn whenever the feed pages in more
+ * events, and a listener bound to the button itself would not survive that.
+ */
+export const inviteButton = (id, cls) =>
+  `<button type="button" class="${e(cls)}" data-invite="${e(id)}">${ADD}</button>`;
+
+/**
+ * No address yet, so the card hands over to the event page rather than growing a field. A card
+ * has no room to say what the address is for, and an email box with no explanation beside it
+ * is the one thing a member will not fill in.
+ *
+ * `data-invite-ask` is also how main.js finds these to upgrade them in place the moment an
+ * address IS remembered, without redrawing a page that may be showing a confirmation.
+ */
+export const inviteAsk = (id, cls) =>
+  `<a class="${e(cls)}" href="#/event/${e(id)}?invite=1" data-invite-ask="${e(id)}">${ADD}</a>`;
+
+/**
+ * `internal` is a hash link within the site: no new tab, and no rel — opening our own event
+ * page in a second tab loses the reader the list they were scrolling.
+ */
+export const register = (href,
+  { small = false, ghost = false, label = 'Register', internal = false } = {}) => `
   <a class="register ${small ? 'sm' : ''} ${ghost ? 'ghost' : ''}" href="${e(href)}"
-     target="_blank" rel="noopener" onclick="event.stopPropagation()">
+     ${internal ? '' : 'target="_blank" rel="noopener"'}>
     ${e(label)} <span class="arr" aria-hidden="true">→</span></a>`;
 
 export const fact = (iconName, text) =>

@@ -23,6 +23,8 @@ import {
   placeShort, nights, hasPassed, displayDate, displayEndDate,
 } from '../format.js';
 import { displayWhen } from '../timezone.js';
+import { savedEmail, maybeAsk } from '../identity.js';
+import { requestInvitation } from '../api/attend.js';
 
 export const meta = {
   id: 'V3', name: 'Event', route: '#/event/:id', vue: 'pages/events/[id].vue',
@@ -39,21 +41,37 @@ const api = useEventsApi();
  * not reached yet. Arriving on a deep link there is nothing cached, so it waits once.
  */
 export async function load(route) {
+  // `?invite=1` is how a card with no remembered address hands over: it has no room to ask
+  // for one, so it sends the reader here, to the field and the sentence explaining it.
+  const wants = Boolean(route.query.invite);
   const known = await api.known(route.params.id);
-  if (known && known.description === undefined) return { ev: known, partial: true };
+  if (known && known.description === undefined) return { ev: known, partial: true, wants };
   const ev = known?.description !== undefined ? known : await api.byId(route.params.id);
   if (!ev) throw new Error('That event is not in the calendar. It may have been renamed or '
     + 'taken down — the full list is on the events page.');
-  return { ev, partial: false };
+  return { ev, partial: false, wants };
 }
 
 /** Fetch the rest, then repaint in place. */
-export async function mount({ ev, partial }, { rerender } = {}) {
+export async function mount({ ev, partial, wants }, { rerender } = {}) {
   wireDownload(ev);
   wireAttend();
+  if (wants) focusInvite();
   if (!partial || !rerender) return;
   const full = await api.byId(ev.id);
-  if (full) rerender({ ev: full, partial: false });
+  if (full) rerender({ ev: full, partial: false, wants });
+}
+
+/**
+ * Bring the field into view and put the cursor in it. Scrolled rather than jumped to, because
+ * a member who arrives from a card needs to see WHICH event this is before they type — landing
+ * on a bare input with the title off screen is how people register for the wrong evening.
+ */
+function focusInvite() {
+  const input = document.querySelector('.attend input[type=email]');
+  if (!input) return;
+  input.closest('.pcard')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (!input.value) input.focus({ preventScroll: true });
 }
 
 /* --- pieces ------------------------------------------------------------- */
@@ -157,6 +175,7 @@ const addToCalendar = (ev) => {
       <span class="addcal-label">${icon('cal')} Get the calendar invitation</span>
       <form class="attend" data-attend="${e(ev.id)}">
         <input type="email" name="email" required autocomplete="email"
+               value="${e(savedEmail())}"
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="addcal-btn primary">Send it to me</button>
         <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
@@ -198,7 +217,14 @@ const addToCalendar = (ev) => {
  * The download is wired after render rather than with an inline handler, because the
  * Content-Security-Policy forbids inline script — see public/_headers.
  */
-/** Submits the one field to /api/attend and reports back in place. */
+/**
+ * Submits the one field and reports back in place.
+ *
+ * The order matters at the end: the invitation is confirmed FIRST and the question about
+ * remembering the address comes after, on top of the confirmation. A member who is asked
+ * about storage before they can see whether the thing they pressed worked will answer the
+ * question to make it go away, which is not an answer.
+ */
 export function wireAttend() {
   const form = document.querySelector('[data-attend]');
   if (!form) return;
@@ -207,19 +233,15 @@ export function wireAttend() {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const email = form.querySelector('input[type=email]').value.trim();
+    const subscribe = form.querySelector('[name=subscribe]')?.checked;
     button.disabled = true;
     const previous = button.textContent;
     button.textContent = 'Sending…';
     try {
-      const res = await fetch('/api/attend', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ event: form.dataset.attend,
-                               email: form.querySelector('input[type=email]').value,
-                               subscribe: form.querySelector('[name=subscribe]')?.checked }),
-      });
-      const body = await res.json();
-      note.className = `addcal-note ${body.ok ? 'good' : 'bad'}`;
+      const body = await requestInvitation({ event: form.dataset.attend, email, subscribe });
+      note.className = `${note.classList.contains('micro') ? 'micro' : 'addcal-note'} ${
+        body.ok ? 'good' : 'bad'}`;
       // The link is offered on success because the email is not guaranteed: a personal Gmail
       // account may not auto-add an invitation from a shared calendar, and it can land in
       // spam. Saying "sent" and stopping there leaves somebody staring at an empty calendar.
@@ -231,16 +253,29 @@ export function wireAttend() {
              + (body.unsubscribe ? ` — <a href="${esc(body.unsubscribe)}">leave it</a>` : '')
              + '.' : ''].filter(Boolean).join(' ')
         : esc(body.message || 'That did not work. Try again in a moment.');
-      if (body.ok) form.remove();
+      if (body.ok) {
+        form.remove();
+        if (await maybeAsk(email)) rememberedNote(note);
+      }
     } catch {
       note.textContent = 'That did not work. Try again in a moment.';
-      note.className = 'addcal-note bad';
+      note.className = `${note.classList.contains('micro') ? 'micro' : 'addcal-note'} bad`;
     } finally {
       button.disabled = false;
       button.textContent = previous;
     }
   });
 }
+
+/**
+ * Said once, where the answer was given. Somebody who has just agreed to have their address
+ * kept should be told what that changed, in the same place they agreed — not left to discover
+ * a new chip in the top bar and wonder what it is.
+ */
+const rememberedNote = (note) => {
+  note.insertAdjacentHTML('beforeend',
+    ' Your address is saved on this device — the next event is one press.');
+};
 
 export function wireDownload(ev) {
   const link = document.querySelector('[data-ics]');
@@ -288,6 +323,7 @@ function primaryAction(ev) {
     return `
       <form class="attend wide" data-attend="${e(ev.id)}">
         <input type="email" name="email" required autocomplete="email"
+               value="${e(savedEmail())}"
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="register">Send me the invitation
           <span class="arr" aria-hidden="true">→</span></button>

@@ -10,6 +10,10 @@ import * as UnsubscribePage from './pages/UnsubscribePage.js';
 import { escape as e } from './format.js';
 import { source } from './api/http.js';
 import { showingLocal, toggleMode, zoneLabel, browserZone } from './timezone.js';
+import { identityBar, wireIdentity, savedEmail } from './identity.js';
+import { requestInvitation } from './api/attend.js';
+import { inviteButton, inviteAsk } from './components/ui.js';
+import { toast } from './components/toast.js';
 
 export const PAGES = { feed: FeedPage, list: ListPage, event: EventPage,
                        unsubscribe: UnsubscribePage };
@@ -22,6 +26,7 @@ const shell = (route) => `
     <div class="wrap">
       <a class="brand" href="#/">EO&nbsp;Ukraine <small>events</small></a>
       <span class="spacer"></span>
+      ${identityBar()}
       ${timeSwitch()}
       <nav class="viewswitch" aria-label="View">
         <a href="#/${route.query.kind ? `?kind=${e(route.query.kind)}` : ''}"
@@ -118,6 +123,86 @@ async function navigate(route) {
         <a class="register ghost sm error-back" href="#/">Back to all events</a></div>`;
   }
 }
+
+wireIdentity();
+
+/**
+ * The three things on a page that depend on the remembered address, patched in place.
+ *
+ * Not a redraw: the address is usually remembered a second after a form has confirmed
+ * something — an invitation with its calendar link, or a subscription carrying the one
+ * unsubscribe link that person will ever be shown — and redrawing would take that away as
+ * they were reading it.
+ */
+document.addEventListener('eo:identity', () => {
+  const email = savedEmail();
+
+  document.querySelector('.me-wrap')?.replaceWith(fragment(identityBar()));
+
+  // Every card that was sending the reader to the event page for an address can now do the
+  // whole thing itself, and vice versa when the address is cleared.
+  for (const a of document.querySelectorAll('[data-invite-ask]')) {
+    if (email) a.replaceWith(fragment(inviteButton(a.dataset.inviteAsk, a.className)));
+  }
+  for (const b of document.querySelectorAll('button[data-invite]')) {
+    if (!email) b.replaceWith(fragment(inviteAsk(b.dataset.invite, b.className)));
+  }
+
+  // An EMPTY field only. Somebody who has typed a different address into the form in front of
+  // them means it, and having it overwritten from the top bar would be maddening.
+  for (const input of document.querySelectorAll('form input[type=email]')) {
+    if (!input.value && email && !input.closest('.me-pop')) input.value = email;
+  }
+});
+
+/** HTML string to a node, for the in-place swaps above. */
+function fragment(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+/**
+ * One press on a card: the remembered address goes straight onto the organiser's event.
+ *
+ * Delegated, because the feed appends cards as it is scrolled and the event page redraws
+ * itself when the description arrives — a listener bound to a button would not survive either.
+ *
+ * The answer comes back as a toast. A card has no room for a paragraph, and growing one to
+ * hold the confirmation would push every card below it down the page as the reader is reading.
+ */
+document.addEventListener('click', async (ev) => {
+  const button = ev.target.closest('[data-invite]');
+  if (!button || button.disabled) return;
+  ev.preventDefault();
+
+  const email = savedEmail();
+  // The address was cleared in another tab between the render and the press. Rather than
+  // send nothing, hand over to the page that can ask for one.
+  if (!email) { location.hash = `/event/${button.dataset.invite}?invite=1`; return; }
+
+  const previous = button.innerHTML;
+  button.disabled = true;
+  button.textContent = 'Sending…';
+  const body = await requestInvitation({ event: button.dataset.invite, email });
+
+  if (!body.ok) {
+    button.disabled = false;
+    button.innerHTML = previous;
+    toast(body.message || 'That did not work. Try again in a moment.', { kind: 'bad' });
+    return;
+  }
+  // It stays disabled and says so: pressing it again would do nothing, and a button that
+  // looks pressable after it has worked invites exactly that.
+  button.textContent = body.already ? 'Already invited' : 'Invitation sent';
+  button.classList.add('done');
+  // Short, and it names the address: it was remembered rather than typed, so the one thing
+  // worth confirming is WHICH address this went to.
+  toast(body.already
+    ? `${email} is already on the guest list.`
+    : `Invitation sent to ${email}. Google will email it.`,
+    { link: body.link ? { href: body.link, label: 'Open in Google Calendar' } : null });
+});
 
 // Flipping the switch changes every date and time on the page, so the page is simply drawn
 // again rather than each surface being told about it.
