@@ -19,7 +19,7 @@ const check = (name, cond, detail = '') => {
 const HEADER = ['Status','Type','Title','Start Date','End Date','Start Time','End Time',
   'Timezone','Date Note','Location','Venue','Summary','Description','Highlights','Who For',
   'Speaker Name','Speaker Title','Speaker Bio','Guests Welcome','Registration URL',
-  'Image URL','Image Credit','Event Owner','Notes','Attendees'];
+  'Image URL','Image Credit','Event Owner','Notes','Attendees','Meeting Link'];
 
 // Status defaults to Published here so each case tests what it says it tests; the opt-in
 // rule itself has its own section below.
@@ -33,7 +33,8 @@ const grid = [
         'Speaker Name':'Joe Gregory', 'Speaker Title':'Founder, Authority',
         Highlights:'One\nTwo\nThree', 'Guests Welcome':true,
         'Registration URL':'https://example.org/a', 'Event Owner':'Anna', Notes:'venue unpaid',
-        Attendees:'Zoe Adams <zoe@private.example> · yes' }),
+        Attendees:'Zoe Adams <zoe@private.example> · yes',
+        'Meeting Link':'https://meet.google.com/private-room-abc' }),
   row({ Type:'Global / Regional', Title:'ELC 2026', 'Start Date':'2026-10-06',
         'End Date':'2026-10-08', Location:'Krakow, Poland',
         'Registration URL':'https://example.org/b' }),
@@ -110,6 +111,9 @@ check('no `notes` or `owner` key', !/"(notes|owner|event_owner)"/.test(published
 // The guest list is personal data written back by the Apps Script. It must never be published.
 check('the guest list is absent', !published.includes('zoe@private.example'));
 check('no `attendees` key', !/"attendees"/.test(published));
+// A joining link on a public page would let anyone walk into the meeting.
+check('the meeting link is absent', !published.includes('meet.google.com'));
+check('no `meeting_link` key', !/"meeting_link"/.test(published));
 
 console.log('\ndegrading rather than crashing');
 check('a sheet with no header row throws a named reason', (() => {

@@ -132,9 +132,11 @@ function writtenMap_() {
   catch (e) { return {}; }
 }
 
-function rememberWritten_(eventId, description, location) {
+function rememberWritten_(eventId, parts) {
   var map = writtenMap_();
-  map[eventId] = { d: fingerprint_(description), l: fingerprint_(location) };
+  var record = map[eventId] || {};
+  for (var k in parts) if (parts[k] !== undefined) record[k] = fingerprint_(parts[k]);
+  map[eventId] = record;
   PropertiesService.getScriptProperties().setProperty(WRITTEN_KEY, JSON.stringify(map));
 }
 
@@ -466,7 +468,7 @@ function syncNow() {
   var ctx = open_();
   if (!ctx) return;
   ensureColumns_(ctx.sheet, ctx.head,
-    ['Calendar Event ID', 'Calendar Link', 'Attendees Emails', 'Attendees',
+    ['Calendar Event ID', 'Calendar Link', 'Meeting Link', 'Attendees Emails', 'Attendees',
      'Invite Subscribers?', 'Subscribers Invited At']);
   ctx = open_();                                     // re-read: columns may have been added
 
@@ -595,7 +597,7 @@ function flushPending() {
     // Correcting a past event would notify every guest about something that is over.
     if (isPast_(found, ctx.map)) return;
 
-    if (applyUpdate_(ctx, found, id, { notify: true })) applied++;
+    if (applyUpdate_(ctx, found, foundIndex, id, { notify: true })) applied++;
   });
   savePending_(map);
   if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
@@ -870,55 +872,160 @@ function refreshAttendees() {
 }
 
 /**
- * Pushes a row's current state onto its event: the title, the times, and — when it is safe —
- * the description and the location.
+ * Reconciles one row with its event, in BOTH directions.
+ *
+ * The rule, applied per field: the script remembers a fingerprint of exactly what it last
+ * wrote. If the event still holds that, nobody has touched it in Google Calendar and the sheet
+ * is the authority. If it holds something else, somebody edited it there — and that edit is
+ * written back INTO the sheet rather than being overwritten.
+ *
+ * So whoever changed a thing last owns it, and neither side silently undoes the other.
  *
  * `notify` sends the change to the guests. True for a real edit; false for the hourly sweep,
- * which is only catching up and should not mail anybody about something that has not changed
- * since they were told about it.
+ * which is catching up rather than announcing.
  */
-function applyUpdate_(ctx, row, id, options) {
+function applyUpdate_(ctx, row, i, id, options) {
   var existing = fetch_(id);
   if (!existing) return false;
 
-  var when = times_(row, ctx.map);
-  var patch = { summary: String(get_(row, ctx.map, 'title')).trim(),
-                start: when.start, end: when.end };
+  var patch = {};
+  var pulled = [], kept = [];
   if (existing.status === 'cancelled') patch.status = 'confirmed';
 
-  // The description and the location are regenerated from the sheet, but written ONLY when the
-  // event still holds exactly what we last put there. If the organiser has edited either by
-  // hand, hers wins — overwriting an organiser's own words every hour is how an automation
-  // gets switched off.
+  // --- title -------------------------------------------------------------
+  var sheetTitle = String(get_(row, ctx.map, 'title') || '').trim();
+  var eventTitle = String(existing.summary || '').trim();
+  if (mayReplace_(id, 't', eventTitle)) {
+    if (eventTitle !== sheetTitle) patch.summary = sheetTitle;
+  } else if (eventTitle && eventTitle !== sheetTitle) {
+    writeCell_(ctx, i, 'title', eventTitle);
+    pulled.push('title');
+  }
+
+  // --- when --------------------------------------------------------------
+  var when = times_(row, ctx.map);
+  if (mayReplace_(id, 'w', whenKey_(existing))) {
+    if (!sameWhen_(existing, when)) { patch.start = when.start; patch.end = when.end; }
+  } else if (!sameWhen_(existing, when)) {
+    writeWhenBack_(ctx, i, existing);
+    pulled.push('dates');
+  }
+
+  // --- description and location ------------------------------------------
   var description = description_(row, ctx.map);
   var location = String(get_(row, ctx.map, 'venue') || get_(row, ctx.map, 'location') || '');
-  var kept = [];
 
-  if (mayReplace_(id, 'd', existing.description)) patch.description = description;
-  else if (fingerprint_(existing.description) !== fingerprint_(description)) kept.push('description');
+  if (mayReplace_(id, 'd', existing.description)) {
+    if (fingerprint_(existing.description) !== fingerprint_(description)) {
+      patch.description = description;
+    }
+  } else if (fingerprint_(existing.description) !== fingerprint_(description)) {
+    kept.push('description');
+  }
 
-  if (mayReplace_(id, 'l', existing.location)) patch.location = location;
-  else if (fingerprint_(existing.location) !== fingerprint_(location)) kept.push('location');
+  if (mayReplace_(id, 'l', existing.location)) {
+    if (String(existing.location || '') !== location) patch.location = location;
+  } else if (String(existing.location || '') !== location) {
+    kept.push('location');
+  }
 
-  var unchanged = patch.summary === existing.summary
-    && patch.description === undefined && patch.location === undefined
-    && sameWhen_(existing, when) && patch.status === undefined;
-  if (unchanged) return false;                       // nothing to say, so say nothing
+  // The joining link is only ever the calendar's: Google Meet is added there, never here.
+  writeMeetingLink_(ctx, i, existing);
+
+  if (pulled.length) {
+    Logger.log('Took the ' + pulled.join(' and ') + ' back from the calendar for "'
+      + (patch.summary || eventTitle) + '".');
+  }
+  if (kept.length) {
+    Logger.log('Kept the hand-edited ' + kept.join(' and ') + ' on "' + eventTitle + '".');
+  }
+
+  var hasChange = false;
+  for (var k in patch) { hasChange = true; break; }
+  if (!hasChange) {
+    // Nothing to send, but record what the event holds now, or the next pass reads the same
+    // difference as a fresh hand-edit for ever.
+    rememberWritten_(id, { t: eventTitle, w: whenKey_(existing),
+                           d: existing.description, l: existing.location });
+    return false;
+  }
 
   try {
     Calendar.Events.patch(patch, calendarId_(), id,
       { sendUpdates: options && options.notify ? 'all' : 'none' });
-    rememberWritten_(id,
-      patch.description === undefined ? existing.description : description,
-      patch.location === undefined ? existing.location : location);
-    if (kept.length) {
-      Logger.log('Kept the hand-edited ' + kept.join(' and ') + ' on "' + patch.summary + '".');
-    }
+    var after = fetch_(id) || existing;
+    rememberWritten_(id, { t: after.summary, w: whenKey_(after),
+                           d: after.description, l: after.location });
     return true;
   } catch (e) {
     Logger.log('Update failed for ' + id + ': ' + e.message);
     return false;
   }
+}
+
+/** One string standing for when the event happens, for comparison and fingerprinting. */
+function whenKey_(event) {
+  var a = (event.start || {}), b = (event.end || {});
+  return String(a.date || a.dateTime || '').slice(0, 16) + '/'
+       + String(b.date || b.dateTime || '').slice(0, 16);
+}
+
+function writeCell_(ctx, i, field, value) {
+  var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
+  if (!head || head.map[field] === undefined) return;
+  ctx.sheet.getRange(i + 1, head.map[field] + 1).setValue(value);
+}
+
+/**
+ * Writes an event's dates and times back into the sheet's own columns.
+ *
+ * An all-day DTEND is exclusive, so the sheet's End Date is the day BEFORE it — the same
+ * conversion as on the way out, in reverse.
+ */
+function writeWhenBack_(ctx, i, event) {
+  var start = event.start || {}, end = event.end || {};
+  if (start.date) {
+    writeCell_(ctx, i, 'start_date', start.date);
+    var last = end.date ? previousDay_(end.date) : start.date;
+    writeCell_(ctx, i, 'end_date', last === start.date ? '' : last);
+    writeCell_(ctx, i, 'start_time', '');
+    writeCell_(ctx, i, 'end_time', '');
+    return;
+  }
+  var zone = start.timeZone || Session.getScriptTimeZone();
+  var from = new Date(start.dateTime), to = new Date(end.dateTime || start.dateTime);
+  writeCell_(ctx, i, 'start_date', Utilities.formatDate(from, zone, 'yyyy-MM-dd'));
+  var endDay = Utilities.formatDate(to, zone, 'yyyy-MM-dd');
+  writeCell_(ctx, i, 'end_date',
+    endDay === Utilities.formatDate(from, zone, 'yyyy-MM-dd') ? '' : endDay);
+  writeCell_(ctx, i, 'start_time', Utilities.formatDate(from, zone, 'HH:mm'));
+  writeCell_(ctx, i, 'end_time', Utilities.formatDate(to, zone, 'HH:mm'));
+}
+
+function previousDay_(iso) {
+  var p = iso.split('-');
+  var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] - 1));
+  return Utilities.formatDate(d, 'UTC', 'yyyy-MM-dd');
+}
+
+/**
+ * The Meet or conferencing link, from the calendar into the sheet.
+ *
+ * One direction only. Conferencing is attached in Google Calendar and cannot be created by
+ * writing a URL, so the sheet is a mirror of it and never a source.
+ */
+function writeMeetingLink_(ctx, i, event) {
+  var link = event.hangoutLink || '';
+  if (!link && event.conferenceData && event.conferenceData.entryPoints) {
+    event.conferenceData.entryPoints.forEach(function (p) {
+      if (!link && p.entryPointType === 'video' && p.uri) link = p.uri;
+    });
+  }
+  if (!link) return;                                 // never blank one that is already there
+  var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
+  if (!head || head.map.meeting_link === undefined) return;
+  var cell = ctx.sheet.getRange(i + 1, head.map.meeting_link + 1);
+  if (String(cell.getValue() || '').trim() !== link) cell.setValue(link);
 }
 
 /** Google returns dates and dateTimes in its own shapes; compare what we would send. */
@@ -963,7 +1070,9 @@ function createEvent_(ctx, row, i) {
     var made = Calendar.Events.insert(body, calendarId_(),
       guests.length ? { sendUpdates: 'all' } : {});
     write_(ctx.sheet, ctx.head, ctx.map, i, made.id, made.htmlLink);
-    rememberWritten_(made.id, body.description, body.location);
+    rememberWritten_(made.id, { d: body.description, l: body.location,
+      t: body.summary, w: whenKey_(made) });
+    writeMeetingLink_(ctx, i, made);
     return made;
   } catch (e) {
     Logger.log('Row ' + (i + 1) + ': ' + e.message);
@@ -1084,6 +1193,7 @@ var HEADERS = {
   calendar_event_id: ['calendar event id'], calendar_link: ['calendar link'],
   attendees: ['attendees', 'participants', 'guest list'],
   attendees_emails: ['attendees emails', 'attendee emails', 'attendees email'],
+  meeting_link: ['meeting link', 'video link', 'join link'],
   invite_subscribers: ['invite subscribers?', 'invite subscribers'],
   subscribers_invited: ['subscribers invited at', 'subscribers invited']
 };

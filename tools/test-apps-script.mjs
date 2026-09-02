@@ -221,7 +221,7 @@ check('internal columns are NOT watched, so editing a note mails nobody',
 
 console.log('\nan organiser\'s own words are not overwritten');
 globalThis.__props = {};
-mod.rememberWritten_('evt-1', 'generated text', 'Kyiv');
+mod.rememberWritten_('evt-1', { d: 'generated text', l: 'Kyiv', t: 'A talk' });
 check('what we wrote may be replaced', mod.mayReplace_('evt-1', 'd', 'generated text'));
 check('what somebody edited may NOT be replaced',
   !mod.mayReplace_('evt-1', 'd', 'generated text, plus the room is now B2'));
@@ -229,10 +229,28 @@ check('the location is tracked separately', mod.mayReplace_('evt-1', 'l', 'Kyiv'
   && !mod.mayReplace_('evt-1', 'l', 'Lviv'));
 check('an event we have no record of is left alone',
   !mod.mayReplace_('evt-unknown', 'd', 'anything'));
-mod.rememberWritten_('evt-1', 'a second version', 'Kyiv');
+mod.rememberWritten_('evt-1', { d: 'a second version' });
 check('after we write again, the new text is ours to replace',
   mod.mayReplace_('evt-1', 'd', 'a second version')
   && !mod.mayReplace_('evt-1', 'd', 'generated text'));
+// A partial write must not forget the fields it did not mention.
+check('remembering one field leaves the others intact',
+  mod.mayReplace_('evt-1', 'l', 'Kyiv') && mod.mayReplace_('evt-1', 't', 'A talk'));
+
+console.log('\nwhat the calendar changed comes back to the sheet');
+globalThis.__props = {};
+mod.rememberWritten_('evt-2', { t: 'Original title', w: '2026-10-06/2026-10-07' });
+check('a title we wrote is still ours to overwrite',
+  mod.mayReplace_('evt-2', 't', 'Original title'));
+check('a title somebody changed in Calendar is NOT ours — it comes back instead',
+  !mod.mayReplace_('evt-2', 't', 'Renamed in Google Calendar'));
+check('the same rule applies to the dates',
+  mod.mayReplace_('evt-2', 'w', '2026-10-06/2026-10-07')
+  && !mod.mayReplace_('evt-2', 'w', '2026-11-01/2026-11-02'));
+check('an event we never wrote is left entirely alone',
+  !mod.mayReplace_('evt-none', 't', 'anything')
+  && !mod.mayReplace_('evt-none', 'w', 'anything'));
+globalThis.__props = {};
 check('different text gives different fingerprints',
   mod.fingerprint_('a') !== mod.fingerprint_('b'));
 check('the same text gives the same fingerprint',

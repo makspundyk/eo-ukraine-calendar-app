@@ -35,18 +35,29 @@ Two halves, deliberately with different authority:
 | Description and location | **the sheet, until somebody edits them in Google Calendar** | see below |
 | Agenda beyond the template, video link, colour, reminders, guest list | **the organiser** | never touched |
 
-**Everything the sheet puts on the event is kept in step with the sheet.** Change a summary, a
-speaker, the highlights, the venue — the description is rebuilt and the event updated.
+**It goes both ways, field by field, and the rule is the same one in both directions:**
 
-**Unless the organiser has edited that field in Google Calendar.** The script remembers a
-fingerprint of exactly what it last wrote. If the event still holds that, the sheet is the
-authority and it is replaced. If it holds something else, somebody typed it, and hers wins —
-the sheet's version is skipped and the log says so.
+> The script remembers a fingerprint of exactly what it last wrote. If the event still holds
+> that, nobody has touched it in Google Calendar and **the sheet is the authority**. If it
+> holds something else, somebody edited it there and **that wins**.
 
-So a room booked by hand at 09:00 is still there after the 10:00 sync, and a summary corrected
-in the sheet at 09:00 reaches the event by 09:10. Without the first half an hourly job silently
-undoes the organiser's work and she stops trusting it within a week; without the second half
-the sheet stops being the source of truth.
+So whoever changed a thing last owns it, and neither side silently undoes the other.
+
+| Change | What happens |
+|---|---|
+| Summary, speaker, highlights, who-it-is-for, registration link edited **in the sheet** | The description is rebuilt and the event updated |
+| **Title** changed in **Google Calendar** | Written back into the sheet's `Title` |
+| **Dates or times** changed in **Google Calendar** | Written back into `Start Date`, `End Date`, `Start Time`, `End Time` |
+| **Description or location** edited in **Google Calendar** | Left exactly as the organiser wrote it; the sheet's version is skipped and the log says which field was kept |
+| A **Meet link** added in Google Calendar | Mirrored into a `Meeting Link` column — one direction only, because conferencing is attached in Calendar and cannot be created by writing a URL |
+
+A room booked by hand at 09:00 is still there after the 10:00 sync. A time moved in Calendar at
+09:00 is in the sheet by 09:10. A summary corrected in the sheet at 09:00 is on the event by
+09:10.
+
+**`Meeting Link` is internal.** It is a joining URL — publishing it would let anyone walk into
+the meeting — so it is stripped alongside `Notes` and the guest list and never reaches
+`/api/calendar`.
 
 A row that stops being Published gets its event **cancelled, not deleted**, so guests are told
 rather than having it disappear from their calendars.
