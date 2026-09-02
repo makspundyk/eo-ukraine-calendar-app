@@ -1,0 +1,659 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head><body>
+<title>Cloudflare POC Standard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --paper:#F7F5F1; --surface:#FFFFFF; --surface-2:#EFECE6; --surface-3:#E4E0D8;
+    --ink:#17181A; --ink-2:#55565A; --ink-3:#8B8A87;
+    --rule:rgba(23,24,26,.12); --rule-2:rgba(23,24,26,.07);
+    /* Two accents that carry meaning, not decoration: which side of the boundary a thing
+       is on. Teal is the public side, indigo the server side. Used consistently throughout. */
+    --pub:#0F6B5F; --pub-soft:#E1EFEC;
+    --srv:#54459A; --srv-soft:#EAE6F6;
+    --danger:#9E2B32; --danger-soft:#F8E8E9;
+    --e1:0 1px 2px rgba(23,24,26,.05);
+    --e2:0 2px 6px -2px rgba(23,24,26,.10), 0 8px 24px -12px rgba(23,24,26,.16);
+    --r:12px; --r-sm:7px; --r-pill:999px;
+    --display:'Newsreader',Georgia,serif;
+    --ui:'Public Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+    --col:790px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#121315; --surface:#1A1B1E; --surface-2:#232427; --surface-3:#2D2E32;
+      --ink:#F0EFEC; --ink-2:#B4B3B0; --ink-3:#84837F;
+      --rule:rgba(240,239,236,.15); --rule-2:rgba(240,239,236,.08);
+      --pub:#5FC7B4; --pub-soft:#142825;
+      --srv:#A497E8; --srv-soft:#22203A;
+      --danger:#E98B90; --danger-soft:#2B1A1C;
+      --e1:0 1px 2px rgba(0,0,0,.4); --e2:0 8px 24px -12px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#121315; --surface:#1A1B1E; --surface-2:#232427; --surface-3:#2D2E32;
+    --ink:#F0EFEC; --ink-2:#B4B3B0; --ink-3:#84837F;
+    --rule:rgba(240,239,236,.15); --rule-2:rgba(240,239,236,.08);
+    --pub:#5FC7B4; --pub-soft:#142825;
+    --srv:#A497E8; --srv-soft:#22203A;
+    --danger:#E98B90; --danger-soft:#2B1A1C;
+    --e1:0 1px 2px rgba(0,0,0,.4); --e2:0 8px 24px -12px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);
+    font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--col);margin:0 auto;padding:0 26px}
+
+  /* ---------- masthead: the boundary is the thesis ---------- */
+  header{padding:76px 0 0}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 16px}
+  h1{font-family:var(--display);font-size:clamp(36px,6vw,58px);font-weight:500;line-height:1.02;
+    letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .lede{font-size:18.5px;line-height:1.6;color:var(--ink-2);margin:20px 0 0;max-width:56ch}
+  .refimpl{font-size:14px;color:var(--ink-3);margin:14px 0 0}
+
+  .boundary{margin:42px 0 0;background:var(--surface);border-radius:var(--r);
+    box-shadow:var(--e2);padding:26px 28px;overflow-x:auto}
+  .boundary pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.85;
+    color:var(--ink-2);white-space:pre}
+  .boundary .p{color:var(--pub);font-weight:500}
+  .boundary .s{color:var(--srv);font-weight:500}
+
+  /* ---------- sections ---------- */
+  main{padding:56px 0 0}
+  section{margin:0 0 60px;scroll-margin-top:20px}
+  .num{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.06em;
+    display:block;margin-bottom:8px}
+  h2{font-family:var(--display);font-size:31px;font-weight:500;letter-spacing:-.015em;
+    line-height:1.15;margin:0 0 8px;text-wrap:balance}
+  h3{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-3);margin:34px 0 12px}
+  p{margin:0 0 15px;color:var(--ink-2)}
+  .ink{color:var(--ink);font-weight:500}
+  strong{color:var(--ink);font-weight:600}
+
+  ul,ol{margin:0 0 15px;padding-left:22px}
+  li{margin-bottom:9px;color:var(--ink-2)}
+  li::marker{color:var(--ink-3)}
+
+  /* ---------- the one rule ---------- */
+  .rule0{background:var(--ink);color:var(--paper);border-radius:var(--r);
+    padding:26px 30px;margin:0 0 24px}
+  .rule0 p{color:rgba(255,255,255,.82);margin:0;font-size:19px;line-height:1.5;
+    font-family:var(--display);font-weight:400}
+  :root[data-theme="dark"] .rule0 p, :root:not([data-theme="light"]) .rule0 p{color:var(--paper)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rule0{background:var(--surface-3)}}
+  :root[data-theme="dark"] .rule0{background:var(--surface-3)}
+  .rule0 b{color:#fff;font-weight:600}
+  :root[data-theme="dark"] .rule0 b{color:var(--ink)}
+
+  /* ---------- side markers: public vs server ---------- */
+  .side{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.06em;text-transform:uppercase;border-radius:var(--r-pill);padding:3px 9px}
+  .side.pub{background:var(--pub-soft);color:var(--pub)}
+  .side.srv{background:var(--srv-soft);color:var(--srv)}
+
+  /* ---------- code ---------- */
+  pre{background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-sm);
+    padding:16px 18px;overflow-x:auto;margin:0 0 16px}
+  /* `code` inside `pre` must NOT take the inline chip background: it paints once per wrapped
+     line box, which reads as ragged grey stripes rather than one block. */
+  pre code{font-family:var(--mono);font-size:12.5px;line-height:1.75;color:var(--ink);
+    white-space:pre;display:block;background:none;padding:0;border-radius:0}
+  code{font-family:var(--mono);font-size:13.5px;background:var(--surface-2);
+    border-radius:4px;padding:1px 5px;color:var(--ink)}
+  pre code .c{color:var(--ink-3)}
+  pre code .pub{color:var(--pub)}
+  pre code .srv{color:var(--srv)}
+  pre code .bad{color:var(--danger)}
+
+  /* ---------- tables ---------- */
+  .tw{overflow-x:auto;border:1px solid var(--rule-2);border-radius:var(--r-sm);margin:0 0 16px}
+  table{border-collapse:collapse;width:100%;min-width:540px;font-size:14.5px}
+  th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-3);padding:12px 16px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:12px 16px;border-bottom:1px solid var(--rule-2);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500}
+  td code,th code{font-size:12.5px}
+
+  /* ---------- callouts ---------- */
+  .note{border-radius:var(--r-sm);padding:14px 18px;font-size:14.5px;line-height:1.6;
+    margin:0 0 16px;border-left:3px solid}
+  .note.d{background:var(--danger-soft);border-color:var(--danger);color:var(--ink-2)}
+  .note.d b{color:var(--danger)}
+  .note.n{background:var(--surface-2);border-color:var(--ink-3);color:var(--ink-2)}
+  .note.n b{color:var(--ink)}
+
+  /* ---------- measured bars ---------- */
+  .bars{display:grid;gap:8px;margin:0 0 16px;font-family:var(--mono);font-size:12.5px}
+  .bar{display:grid;grid-template-columns:minmax(0,190px) 1fr auto;gap:12px;align-items:center}
+  .bar span:first-child{color:var(--ink-2)}
+  .bar i{display:block;height:9px;border-radius:3px;background:var(--srv)}
+  .bar b{color:var(--ink);font-weight:500}
+
+  /* ---------- ordered steps ---------- */
+  .steps{counter-reset:s;list-style:none;padding:0;display:grid;gap:2px;
+    background:var(--rule-2);border-radius:var(--r-sm);overflow:hidden}
+  .steps li{counter-increment:s;background:var(--surface);margin:0;padding:13px 18px 13px 48px;
+    position:relative;font-size:14.5px}
+  .steps li::before{content:counter(s);position:absolute;left:18px;top:13px;
+    font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+
+  /* ---------- checklist ---------- */
+  .check{list-style:none;padding:0;display:grid;gap:2px;background:var(--rule-2);
+    border-radius:var(--r-sm);overflow:hidden;margin:0}
+  .check li{background:var(--surface);margin:0;padding:12px 18px 12px 44px;position:relative;
+    font-size:14.5px;color:var(--ink-2)}
+  .check li::before{content:'';position:absolute;left:18px;top:15px;width:13px;height:13px;
+    border-radius:3px;border:1.5px solid var(--rule);}
+
+  footer{border-top:1px solid var(--rule);margin-top:20px;padding:30px 0 76px;
+    font-size:13.5px;color:var(--ink-3)}
+  a{color:var(--srv);text-underline-offset:3px}
+  a:focus-visible{outline:2px solid var(--srv);outline-offset:3px}
+</style>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Engineering standard · v1</p>
+    <h1>Building a POC that deploys to Cloudflare on day one</h1>
+    <p class="lede">For small applications with a public front end and a private data source —
+      a spreadsheet, a vendor API, a database. So a project is deployable from its first commit
+      rather than retrofitted later, and the credential never reaches the browser.</p>
+    <p class="refimpl">The EO Ukraine calendar is the reference implementation. Every pattern
+      here is running in it.</p>
+
+    <div class="boundary">
+<pre><span class="p">Browser</span>  ──►  /api/&lt;thing&gt;  ──►  <span class="s">your server code</span>  ──►  <span class="s">credential</span>  ──►  <span class="s">private source</span>
+<span class="p"> public</span>          same origin           <span class="s">Cloudflare</span>              <span class="s">secret</span>            <span class="s">private</span></pre>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section>
+  <span class="num">00</span>
+  <h2>The one rule everything else serves</h2>
+  <div class="rule0"><p><b>The browser is public. The server is not.</b> Decide which side
+    every value lives on before writing a line of code, and never move one across.</p></div>
+  <p>A key in front-end code is public no matter how it got there: a build-time variable
+    inlined into a bundle, a <code>&lt;meta&gt;</code> tag, a “hidden” JSON file, a source map.
+    If the browser can run it, someone can read it.</p>
+  <p>Two consequences that are easy to get wrong:</p>
+  <ul>
+    <li><strong>Everything your endpoint returns is public</strong>, whether or not the UI
+      displays it. Someone can open <code>/api/calendar</code> directly. Return the fields the
+      interface renders, not the row you happened to fetch.</li>
+    <li><strong>Error messages are part of the response.</strong> A message naming the service
+      account, quoting the upstream body, or echoing configuration leaks exactly when things
+      are going wrong and people are pasting screenshots into chat.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="num">01</span>
+  <h2>Choose the platform, then stop thinking about it</h2>
+  <p>Cloudflare offers two ways to host this. Both are current; neither is deprecated.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>Pages + Functions</th><th>Workers + static assets</th></tr></thead>
+      <tbody>
+        <tr><td>Static files</td><td>build output directory</td><td><code>assets.directory</code></td></tr>
+        <tr><td>Server code</td><td><code>functions/</code> file routing</td><td>one entry, your own routing</td></tr>
+        <tr><td>Set up by</td><td>connecting a Git repo</td><td><code>wrangler deploy</code>, or Git</td></tr>
+        <tr><td>SSR frameworks</td><td>limited</td><td><strong>the supported target</strong></td></tr>
+        <tr><td>Cron · Queues · Durable Objects · Email</td><td>no / limited</td><td>yes</td></tr>
+        <tr><td>Best for</td><td>static or SPA plus a few endpoints</td><td>a framework server, or scheduled work</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Default to Pages + Functions</strong> for a POC of this shape: a front end plus a
+    few read endpoints. Least machinery, file routing needs no code, a Git connection deploys
+    it.</p>
+  <p><strong>Choose Workers + static assets</strong> when any of these is true — and decide at
+    the start rather than migrating later:</p>
+  <ul>
+    <li>the front end is Nuxt, SvelteKit, Next or Astro SSR and you want server rendering</li>
+    <li>you need a <strong>cron trigger</strong>, a <strong>queue consumer</strong>,
+      <strong>Durable Objects</strong>, or <strong>email</strong></li>
+    <li>you want <code>run_worker_first</code> — the Worker seeing a request before assets do</li>
+  </ul>
+<pre><code><span class="c">// wrangler.jsonc</span>
+{
+  "name": "my-app",
+  "main": "src/server.js",
+  "compatibility_date": "2026-09-02",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  }
+}</code></pre>
+  <p>Routing there: an exact asset match is served without running the Worker; anything else
+    runs the Worker, which can fall back with <code>env.ASSETS.fetch(request)</code>.</p>
+  <div class="note n"><b>Framework projects</b> use the framework's Cloudflare adapter — Nitro
+    preset <code>cloudflare_module</code> for Nuxt, <code>@sveltejs/adapter-cloudflare</code>,
+    <code>@opennextjs/cloudflare</code>. Everything in this document still applies: same
+    variable names, same server-only boundary, same local parity, same degradation. Only the
+    file layout differs, because the adapter decides it.</div>
+</section>
+
+<section>
+  <span class="num">02</span>
+  <h2>Repository layout</h2>
+  <p>The layout is the security boundary made visible. If a reviewer has to think about whether
+    a file is published, the layout is wrong.</p>
+<pre><code><span class="pub">public/</span>            <span class="c">← THE ONLY DIRECTORY PUBLISHED. Nothing secret, ever.</span>
+<span class="pub">  index.html</span>
+<span class="pub">  assets/</span>
+<span class="pub">  src/</span>             <span class="c">front-end modules</span>
+<span class="pub">  data/</span>            <span class="c">demo fallback data</span>
+<span class="pub">  _headers</span>         <span class="c">security headers and cache policy</span>
+<span class="srv">functions/</span>         <span class="c">← Pages Functions. REPOSITORY ROOT, NOT inside public/</span>
+<span class="srv">  api/calendar.js</span>  <span class="c">→ /api/calendar</span>
+<span class="srv">lib/</span>               <span class="c">server-only: auth, parsing, the endpoint's answer</span>
+<span class="srv">data/</span>              <span class="c">inputs that generate the demo data</span>
+<span class="srv">docs/  tools/</span>      <span class="c">specifications, tests, dev helpers</span>
+<span class="srv">serve.mjs</span>          <span class="c">local dev server. Never deployed</span>
+<span class="srv">.env</span>               <span class="c">gitignored</span></code></pre>
+  <p>Three placements that are wrong in ways that are not obvious:</p>
+  <ol>
+    <li><strong><code>functions/</code> must be at the repository root, not beside
+      <code>index.html</code>.</strong> Put it inside the build output and Cloudflare publishes
+      your server code as a readable static file and never executes it. If the front end lives
+      in <code>public/</code>, <code>functions/</code> is its <em>sibling</em>.</li>
+    <li><strong><code>lib/</code> must be outside the output directory</strong>, or the module
+      that builds a JWT ships to the browser.</li>
+    <li><strong>The output directory contains only what should be public.</strong> Pointing
+      Cloudflare at the repository root publishes your docs, your READMEs and your generator
+      scripts.</li>
+  </ol>
+  <p>Verify it rather than believing it:</p>
+<pre><code>curl -s -o /dev/null -w "%{http_code}\n" http://localhost:PORT/lib/google-sheets.mjs   <span class="c"># 404</span>
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:PORT/.env                     <span class="c"># 404</span></code></pre>
+</section>
+
+<section>
+  <span class="num">03</span>
+  <h2>Configuration and secrets</h2>
+  <p><strong>The same variable names in every environment.</strong> A name that differs between
+    local and production is a bug that only appears in production.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Where</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Cloudflare</td><td>Settings → Variables and secrets. Secrets for credentials, plain variables for flags</td></tr>
+        <tr><td>Local</td><td>a gitignored <code>.env</code> — or <code>.dev.vars</code> if you standardise on Wrangler. <strong>Pick one</strong></td></tr>
+        <tr><td>Pages Function</td><td><code>context.env.NAME</code></td></tr>
+        <tr><td>Worker</td><td><code>env.NAME</code></td></tr>
+        <tr><td>Local server</td><td><code>process.env</code> / your <code>.env</code> loader</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note d"><b>process.env does not exist in the Workers runtime.</b> Server code
+    that must run in both should take an env object as an argument rather than reaching for a
+    global.</div>
+  <p>Commit a <code>.env.example</code> with names and empty values. Never a real one.</p>
+<pre><code>.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/          <span class="c"># miniflare caches request and response bodies on disk</span>
+node_modules/</code></pre>
+  <h3>Credential files</h3>
+  <p>A service-account JSON or downloaded key is best kept <strong>outside the repository
+    entirely</strong>, with local config pointing at wherever it was downloaded. If a project
+    insists on holding one, it goes in a directory ignored <em>wholesale</em>:</p>
+<pre><code>secrets/*
+!secrets/README.md      <span class="c"># the directory documents itself; nothing else is committable</span></code></pre>
+  <p>Add the ignore rule <strong>before</strong> copying the file in, so it is never visible to
+    git for even one command. Then prove it: <code>git check-ignore -v &lt;path&gt;</code> and
+    <code>git add -An | grep secrets</code>.</p>
+  <h3>A private key must never have been committed</h3>
+  <p>Check history, not just the working tree — and check for <em>values</em>, not variable
+    names, which legitimately appear in source:</p>
+<pre><code>git rev-list --all --objects | awk '{print $1}' | sort -u | while read -r o; do
+  git cat-file -t "$o" 2>/dev/null | grep -q blob && git cat-file -p "$o" 2>/dev/null
+done | grep -cE -- "-----BEGIN [A-Z ]*PRIVATE KEY-----|\"private_key_id\""</code></pre>
+  <div class="note d">Anything but <b>0</b> means the key must be <b>revoked and reissued</b>.
+    Deleting it in a later commit does not help; the history is already pushed.</div>
+</section>
+
+<section>
+  <span class="num">04</span>
+  <h2>One endpoint contract, two implementations</h2>
+  <p>The front end must not know which environment it is in. Give it one URL and change what
+    answers it.</p>
+<pre><code><span class="pub">public/src/api/http.js</span>  ──►  GET /api/calendar
+                               ├── production: <span class="srv">functions/api/calendar.js</span>  (context.env)
+                               └── local:      <span class="srv">serve.mjs</span>                  (.env)
+                                      both call <span class="srv">lib/</span></code></pre>
+  <p>Neither adapter contains logic. They read the environment, call the shared module,
+    serialise the result, and log. That is what stops the two environments drifting — the only
+    difference between them is where the secret came from.</p>
+  <div class="note n"><b>Do not branch the front end on an environment flag.</b> A flag like
+    <code>CLOUDFLARE_ON</code> is fine as server-side configuration for a log line, but the
+    moment browser code reads it you have two front ends to test and a name that hints at your
+    infrastructure. If the endpoint answers the same everywhere, the flag is unnecessary in the
+    browser by construction.</div>
+  <div class="note n"><b>Write server code to the Web Platform, not to Node.</b>
+    <code>fetch</code>, <code>crypto.subtle</code>, <code>Request</code>/<code>Response</code>,
+    <code>URL</code>, <code>TextEncoder</code> exist in both the Workers runtime and modern
+    Node. A shared module using only those runs in both with no compatibility flag. Reach for a
+    Node built-in and you have just split your codebase in two.</div>
+</section>
+
+<section>
+  <span class="num">05</span>
+  <h2>The server module, in four parts</h2>
+  <p>Keep them separate. Each is independently testable, and the boundaries are where the
+    mistakes live.</p>
+
+  <h3><span class="side srv">server</span> &nbsp;lib/&lt;source&gt;.mjs — authenticate and fetch</h3>
+  <p>Nothing else. It returns raw upstream data and throws typed errors.</p>
+<pre><code>export class SourceError extends Error {
+  constructor(reason, message, { status, publicMessage } = {}) {
+    super(message);            <span class="c">// SERVER LOG: may name the account, quote upstream</span>
+    this.reason = reason;      <span class="c">// short machine-readable tag; safe to publish</span>
+    this.publicMessage = publicMessage || 'The data could not be read.';  <span class="c">// BROWSER</span>
+  }
+}</code></pre>
+  <p>Two messages is the whole trick. One message inevitably gets returned to the client with
+    the upstream's error payload inside it.</p>
+
+  <h3><span class="side srv">server</span> &nbsp;lib/normalize.mjs — raw data into the render shape</h3>
+  <p>Every quirk of the source is handled here, once, and <em>recorded</em> rather than
+    silently patched:</p>
+<pre><code>issues.push({ row, kind: 'unreadable_date', detail: `"${raw}" is not YYYY-MM-DD` });</code></pre>
+  <p>A repair hidden inside a template is invisible the next time the source changes. A repair
+    recorded as data shows up in a log and can be fixed upstream.</p>
+  <p>It is also the boundary internal fields must not cross. Name them and strip them
+    explicitly:</p>
+<pre><code>const INTERNAL = new Set(['notes', 'owner', 'internal_comments']);
+export const stripInternal = (r) =>
+  Object.fromEntries(Object.entries(r).filter(([k]) =&gt; !INTERNAL.has(k)));</code></pre>
+
+  <h3><span class="side srv">server</span> &nbsp;lib/&lt;domain&gt;.mjs — what the endpoint answers</h3>
+  <p>Takes the environment and the query, returns <code>{ body, logLine, issues }</code>. The
+    adapters print <code>logLine</code> and serialise <code>body</code>. This split is what
+    keeps a service-account address out of a JSON response while still putting it in a log
+    where an operator needs it.</p>
+
+  <h3>Identifiers deserve their own paragraph</h3>
+  <div class="note d"><b>Never derive an id from row position or encounter order.</b> A “first
+    one wins, later ones get <code>-2</code>” scheme means re-sorting the source swaps two
+    records' URLs — and a shared link then opens <b>the wrong thing</b>, which is worse than
+    opening nothing, because nobody notices.</div>
+  <p>Compose the id from values a person actually chose (<code>title-slug</code> +
+    <code>date</code>). Assign ids in <strong>one pass over the whole set</strong>, so a
+    collision suffixes <em>every</em> member of the group rather than just the later one —
+    otherwise the first row met still keeps the clean id and you have reinvented the bug.
+    Offer an optional explicit <code>Slug</code> column for records needing a permanent
+    address.</p>
+</section>
+
+<section>
+  <span class="num">06</span>
+  <h2>Degrade, do not crash</h2>
+  <p>A POC is demonstrated more often than it is used. It must never show a stack trace to a
+    room.</p>
+<pre><code>{ ok: true,  source: 'live', count, fetched_at, events: [...] }
+{ ok: false, source: 'mock', reason: 'not_shared', message: '&lt;generic&gt;' }</code></pre>
+  <ul>
+    <li><strong>HTTP stays 200 for a handled failure.</strong> A 500 puts a red line in the
+      console for something the application handled correctly, and teaches whoever is on call
+      to ignore red lines.</li>
+    <li><strong>The client falls back to demo data</strong> committed under the output
+      directory. This also covers the case where no server code is deployed at all.</li>
+    <li><strong>Say so in the interface.</strong> A quiet banner naming the reason. Silently
+      showing last season's data is how a broken integration survives for weeks.</li>
+    <li><strong>Distinguish a chosen demo from a failure.</strong> A <code>DEMO=1</code> flag
+      that pins the app to demo data and contacts nothing is worth having — for a rehearsal, or
+      while the source is being restructured. Give it different wording, or a deliberate choice
+      looks like a fault and a fault looks intentional.</li>
+    <li><strong>An empty source is a failure, not an empty result.</strong> Zero rows is a
+      misconfiguration far more often than a genuinely empty dataset, and rendering nothing
+      hides it.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="num">07</span>
+  <h2>Fetch what a screen needs, when it needs it</h2>
+  <div class="note d"><b>Measure before optimising.</b> The instinct is that a slow response
+    means too much data. Often it is round-trip latency, which chunking multiplies.</div>
+  <p>Measured on the reference project:</p>
+  <div class="bars">
+    <div class="bar"><span>sign JWT + exchange token</span><i style="width:39%"></i><b>187 ms</b></div>
+    <div class="bar"><span>read ALL 22 columns</span><i style="width:100%"></i><b>476 ms</b></div>
+    <div class="bar"><span>read 1 column</span><i style="width:89%"></i><b>422 ms</b></div>
+  </div>
+  <p>One column costs the same as twenty-two. Splitting that read into three chunks would have
+    cost <strong>~1.6s instead of ~0.7s</strong>. Worse, spreadsheet rows are in the order a
+    human typed them, not date order — so “the next ten records” cannot be a row range at all.
+    Everything must be read and sorted before the first card is even correct.</p>
+  <p>So put the laziness everywhere except there:</p>
+  <ul>
+    <li><strong>Cache the access token</strong> until it nears expiry. Signing a fresh one per
+      request throws away a third of a cold request, every request. Module scope is enough —
+      both runtimes reuse it between requests, and a cold isolate simply mints one.</li>
+    <li><strong>Cache the parsed source briefly</strong> (30–120s) so a detail request straight
+      after a list request costs nothing upstream. Keep it short: someone editing the source
+      expects to see it.</li>
+    <li><strong>Split the payload by need, not by size.</strong> A list endpoint returns what a
+      card draws; a detail endpoint returns the long prose for one record. Withhold on the
+      server, not in the UI.</li>
+    <li><strong>Fetch a scope only when asked.</strong> “Past events” is a second request
+      triggered by the button, not a filter over one big payload.</li>
+    <li><strong>Cache each result in the client until reload</strong>, keyed by scope and by id
+      — the granularity the screens ask in.</li>
+    <li><strong>Paginate the DOM, not the network.</strong> Render a page of cards and append
+      on an <code>IntersectionObserver</code> sentinel. Two hundred cards with photographs is
+      layout work nobody scrolling past the third one asked for.</li>
+    <li><strong>Paint from what you already have.</strong> A detail page can render its header
+      from the list record instantly and fill in prose when it lands, instead of a spinner over
+      facts already in memory.</li>
+  </ul>
+<pre><code><span class="c">// a success caches at the edge; a failure never does, so recovery is immediate</span>
+const cacheControl = body.ok
+  ? 'public, max-age=0, s-maxage=120, stale-while-revalidate=600'
+  : 'no-store';</code></pre>
+</section>
+
+<section>
+  <span class="num">08</span>
+  <h2>Local development must be the real thing</h2>
+  <p>Two rules, and they are the difference between an hour of debugging and a week of it.</p>
+  <p><strong>One command, real data.</strong> <code>npm install &amp;&amp; npm run dev</code>
+    should show live data from the real source, using local credentials. A local mode that only
+    shows fixtures means nobody exercises the integration until deployment.</p>
+  <p><strong>Parity enforced by sharing files, not by discipline.</strong> The local server
+    applies the same headers file the platform will. That single choice caught three real
+    defects in the reference project before they could ship: an inline
+    <code>&lt;script&gt;</code> violating <code>script-src</code>, three inline
+    <code>style</code> attributes, and a wrong relative path that would have left the deployed
+    calendar empty.</p>
+  <p>Keep a second command that runs the actual platform runtime, so the deployed code path is
+    exercised before it is deployed:</p>
+<pre><code>{
+  "scripts": {
+    "dev":    "node serve.mjs",
+    "dev:cf": "node tools/dev-cf.mjs",       <span class="c">// wrangler pages dev &lt;output-dir&gt;</span>
+    "test":   "node tools/test-parser.mjs &amp;&amp; node tools/test-api.mjs"
+  }
+}</code></pre>
+  <p>Have <code>dev:cf</code> read the project's single <code>.env</code> and pass values as
+    <code>--binding</code> arguments, rather than maintaining a second secrets file that
+    drifts.</p>
+</section>
+
+<section>
+  <span class="num">09</span>
+  <h2>Security headers</h2>
+  <p>Ship <code>_headers</code> in the output directory (Pages), or set them in the Worker
+    response.</p>
+<pre><code>/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
+    'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;
+    img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self';
+    base-uri 'none'; form-action 'none'</code></pre>
+  <p><strong>Keep <code>script-src 'self'</code> strict</strong> — no <code>'unsafe-inline'</code>.
+    It is the directive that stops an injected <code>&lt;script&gt;</code> running, and it
+    matters most in exactly the applications this standard describes, where content is authored
+    in a shared document. It costs one thing: no inline <code>&lt;script&gt;</code> and no
+    inline event handlers, both easy to avoid.</p>
+  <p><code>style-src</code> may need <code>'unsafe-inline'</code> if you sanitise author HTML —
+    merely <em>parsing</em> a <code>style</code> attribute raises a CSP report even when it is
+    stripped before rendering. Relax that one and say why in a comment; do not relax
+    <code>script-src</code> to match.</p>
+  <div class="note n"><b>If you render HTML written by a human in the source document,
+    sanitise it from an allowlist.</b> Rebuild the tree keeping known tags, unwrap the rest to
+    their text, drop every attribute except a safe <code>href</code>, and force
+    <code>target="_blank" rel="noopener noreferrer"</code>. Treat pasted word-processor markup
+    as the normal case, not the exception.</div>
+</section>
+
+<section>
+  <span class="num">10</span>
+  <h2>Prove it, do not claim it</h2>
+  <p>Tests should assert the things a reviewer would otherwise have to take on faith.</p>
+  <p><strong>A source parser test</strong>, with fixtures and no network: field mapping,
+    malformed input degrading rather than throwing, unsafe URLs dropped, internal fields absent
+    from output, and — if ids are derived — that reordering the input produces identical ids.</p>
+  <p><strong>An endpoint test</strong> that stubs the upstream and asserts the <em>shape</em>
+    and the <em>call count</em>:</p>
+<pre><code>let calls = [];
+globalThis.fetch = async (url) =&gt; { calls.push(url); <span class="c">/* return a fixture */</span> };
+
+await getCalendar(env, { scope: 'upcoming' });
+check('a warm request re-reads nothing', calls.length === 0);</code></pre>
+  <p>Counting requests is what turns “we made it lazy” from a claim into a fact.</p>
+  <p><strong>A leak scan in a real browser.</strong> Load every page, collect every response
+    body, and assert the credentials are absent:</p>
+<pre><code>[['private key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+ ['token',       /\bya29\.[A-Za-z0-9_-]{20}/],
+ ['account',     /iam\.gserviceaccount\.com/],
+ ['source id',   /spreadsheets\/d\/|SPREADSHEET_ID/]]</code></pre>
+  <p><strong>Screenshots that fail on a console error.</strong> A script that renders every
+    view at desktop, tablet and phone widths and exits non-zero on any console error catches
+    the class of breakage unit tests never see.</p>
+</section>
+
+<section>
+  <span class="num">11</span>
+  <h2>Order of work</h2>
+  <p>Each of these is cheap now and expensive later.</p>
+  <ol class="steps">
+    <li><code>git init</code>, and write <code>.gitignore</code> <strong>before</strong> any
+      credential exists on disk.</li>
+    <li>Decide Pages or Workers using the table in §01. Create the project, connect the repo.</li>
+    <li>Create the output directory with a placeholder page. Deploy. <strong>Get a green
+      deployment before there is anything to debug.</strong></li>
+    <li>Add <code>functions/api/health.js</code> returning <code>{ ok: true }</code>. Deploy.
+      Now routing is proven.</li>
+    <li>Set the environment variables in the dashboard, and the same names in <code>.env</code>.</li>
+    <li>Build <code>lib/</code> — auth, then normalise, then the endpoint's answer. Test with
+      the upstream stubbed.</li>
+    <li>Wire the local server to the same <code>lib/</code>. Confirm real data locally.</li>
+    <li>Build the front end against the endpoint, with the demo fallback from the first commit.</li>
+    <li>Add <code>_headers</code>, and make the local server apply them. Fix what that breaks.</li>
+    <li>Write the README: architecture, both setups, variable <strong>names</strong>, commands,
+      and the route.</li>
+  </ol>
+</section>
+
+<section>
+  <span class="num">12</span>
+  <h2>Checklist before the first deploy</h2>
+  <ul class="check">
+    <li>Output directory contains only public files; <code>curl</code> proves <code>lib/</code>,
+      <code>.env</code>, <code>docs/</code> are 404</li>
+    <li><code>functions/</code> at the repository root, not inside the output directory</li>
+    <li>Same variable names locally and in the dashboard; <code>.env.example</code> committed
+      with no values</li>
+    <li><code>.env</code>, <code>.dev.vars</code>, <code>.wrangler/</code>,
+      <code>node_modules/</code>, credential files all gitignored</li>
+    <li>Git history contains no private key <strong>value</strong> — checked with the blob scan</li>
+    <li>Server code uses <code>context.env</code> / <code>env</code>, never
+      <code>process.env</code></li>
+    <li>Server code uses only Web Platform APIs, or a compatibility flag is set deliberately</li>
+    <li>Endpoint returns only rendered fields; internal columns stripped at a named boundary</li>
+    <li>Error responses are generic; detail goes to the log only</li>
+    <li>Ids are not derived from row position or encounter order</li>
+    <li>Failure falls back to demo data, says so in the UI, and returns 200</li>
+    <li>Token cached; successful responses cached at the edge; failures never cached</li>
+    <li><code>_headers</code> applied locally as well as in production</li>
+    <li><code>npm install &amp;&amp; npm run dev</code> shows real data</li>
+    <li><code>npm test</code> passes; screenshots render with no console errors</li>
+    <li>README documents architecture, both setups, variable names, commands, and the route</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">Cloudflare POC standard · v1 · reference implementation:
+    <code>eo-ukraine-calendar-app</code> · the same text lives at
+    <code>docs/CLOUDFLARE-POC-STANDARD.md</code></div>
+</footer>
+<style>
+  /* ---- print sheet -------------------------------------------------------
+     A standard gets printed, annotated and handed to someone. On paper it has to
+     survive being read out of order, so nothing that belongs together may split,
+     and NOTHING may be clipped — a code block cut off at the right margin is a
+     silently wrong instruction. */
+  @page { size: A4; margin: 15mm 14mm 17mm; }
+  html, body { background:#F7F5F1 !important; }
+  .wrap { max-width:100%; padding:0; }
+
+  header { padding:0 0 8px; }
+  h1 { font-size:34px; }
+  .lede { font-size:15px; }
+  .refimpl { font-size:12.5px; }
+  main { padding:30px 0 0; }
+
+  h2 { font-size:22px; break-after:avoid; }
+  h3 { break-after:avoid; margin-top:22px; }
+  .num { break-after:avoid; }
+  section { margin-bottom:26px; }
+
+  /* indivisible blocks */
+  .boundary, .note, .rule0, .bars, .tw, pre { break-inside:avoid; }
+  li, tr { break-inside:avoid; }
+  .steps, .check { break-inside:auto; }
+  thead { display:table-header-group; }
+
+  /* On screen a long line scrolls sideways. On paper there is no sideways, so it
+     wraps instead of being cut. The boundary diagram is column-aligned art, so it
+     keeps `pre` and is set smaller to fit the measure. */
+  pre code { white-space:pre-wrap; overflow-wrap:anywhere; font-size:10.5px; line-height:1.6; }
+  pre { box-shadow:none; padding:12px 14px; }
+  .boundary { box-shadow:none; border:1px solid rgba(23,24,26,.12); padding:16px 18px; }
+  .boundary pre { white-space:pre; font-size:9.5px; line-height:1.7; }
+  table { min-width:0; font-size:12px; }
+  th, td { padding:9px 12px; }
+  .tw { overflow:visible; }
+
+  body { font-size:13px; line-height:1.55; }
+  p, li { font-size:12.5px; }
+  code { font-size:11.5px; }
+  .rule0 { padding:18px 22px; }
+  .rule0 p { font-size:16px; }
+  .side { font-size:9px; }
+  .steps li, .check li { font-size:12px; padding-top:9px; padding-bottom:9px; }
+
+  a { color:#54459A; text-decoration:none; }
+  footer { break-inside:avoid; padding-bottom:0; }
+</style>
+</body></html>

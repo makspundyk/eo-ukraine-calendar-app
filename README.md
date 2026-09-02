@@ -158,6 +158,8 @@ This project is the reference implementation for
 [`docs/CLOUDFLARE-POC-STANDARD.md`](docs/CLOUDFLARE-POC-STANDARD.md) — how to build a POC with
 a public front end and a private data source so it deploys to Cloudflare from the first commit.
 Read that before starting a similar project.
+[`docs/Cloudflare-POC-standard.pdf`](docs/Cloudflare-POC-standard.pdf) is the same document for
+sharing, regenerated from `docs/cloudflare-standard-print.html`.
 
 **Before wiring the live sheet, read [`docs/SHEET.md`](docs/SHEET.md)** — the 22-column
 standard the sheet has to follow, and the ten things the current file gets wrong.
