@@ -21,7 +21,9 @@ const HEADER = ['Status','Type','Title','Start Date','End Date','Start Time','En
   'Speaker Name','Speaker Title','Speaker Bio','Guests Welcome','Registration URL',
   'Image URL','Image Credit','Event Owner','Notes'];
 
-const row = (o = {}) => HEADER.map((h) => o[h] ?? '');
+// Status defaults to Published here so each case tests what it says it tests; the opt-in
+// rule itself has its own section below.
+const row = (o = {}) => HEADER.map((h) => o[h] ?? (h === 'Status' ? 'Published' : ''));
 
 const grid = [
   ['EO Ukraine event calendar 2026/27'],                       // a title row
@@ -71,6 +73,31 @@ check('javascript: registration link dropped',
   by('Bad data').registration_url === '' && issues.some((i) => i.kind === 'unsafe_url'));
 check('missing image falls back by type', by('ELC 2026').image_url.startsWith('https://'));
 
+console.log('\npublishing is opt-in');
+const S = ['Status','Type','Title','Start Date','Registration URL'];
+const sRow = (o) => S.map((h) => o[h] ?? '');
+const base = { Type:'Social', 'Start Date':'2026-05-01', 'Registration URL':'https://e.org/x' };
+const statuses = normalizeRows([S,
+  sRow({ ...base, Status:'Published', Title:'Explicitly published' }),
+  sRow({ ...base, Status:'',          Title:'Blank status' }),
+  sRow({ ...base, Status:'Draft',     Title:'Draft' }),
+  sRow({ ...base, Status:'Cancelled', Title:'Cancelled' }),
+  sRow({ ...base, Status:'publised',  Title:'Typo in status' }),
+]);
+const shown = statuses.events.map((e) => e.title);
+check('only an explicit Published is public', shown.join(',') === 'Explicitly published', shown.join(','));
+check('a BLANK status is not published', !shown.includes('Blank status'));
+check('a mistyped status is not published', !shown.includes('Typo in status'));
+check('...and the typo is reported rather than swallowed',
+  statuses.issues.some((i) => i.kind === 'unknown_status'));
+
+// A sheet with no Status column has nothing to opt into; hiding everything would be absurd.
+const NOSTATUS = ['Type','Title','Start Date','Registration URL'];
+const noStatus = normalizeRows([NOSTATUS,
+  ['Social', 'No status column here', '2026-05-01', 'https://e.org/y']]);
+check('a sheet with no Status column publishes everything',
+  noStatus.events.length === 1, `${noStatus.events.length} events`);
+
 console.log('\nnothing internal reaches the public payload');
 const published = JSON.stringify(events.map(stripInternal));
 check('Event Owner value absent', !published.includes('Anna'));
@@ -88,7 +115,7 @@ check('a header with no data rows yields zero events',
 // The documented promise: columns may be reordered without breaking anything.
 console.log('\ncolumns read by name, not position');
 const shuffled = [HEADER.slice().reverse(),
-  HEADER.slice().reverse().map((h) => ({ Title:'Reordered', Type:'Social',
+  HEADER.slice().reverse().map((h) => ({ Status:'Published', Title:'Reordered', Type:'Social',
     'Start Date':'2026-12-01', 'Registration URL':'https://example.org/z' }[h] ?? ''))];
 const re = normalizeRows(shuffled).events;
 check('a fully reversed column order still parses',

@@ -90,12 +90,20 @@ never required — reach for it only if permanent links matter to you.
 
 Whether members can see the row yet.
 
-- `Published` — live on the calendar.
+- `Published` — live on the calendar. **This exact word, and nothing else, publishes a row.**
 - `Draft` — you are still writing it. Nobody sees it.
 - `Cancelled` — it was announced and it is not happening. Removed from the calendar.
 
-**A blank cell counts as Published.** So a half-finished row is visible to everyone until you
-set it to Draft. Set Draft first, write second.
+**A blank cell counts as Draft.** Publishing is opt-in: start a row, fill it in over a week if
+you like, and nobody sees it until you choose `Published`. A half-written event in front of the
+whole chapter is a worse mistake than a finished one nobody can see yet, so this fails closed.
+
+The same applies to a typo — `Publised` does not publish, and the calendar reports it rather
+than swallowing it.
+
+The one exception: a sheet with **no `Status` column at all** publishes every row. There is
+nothing to opt into, and hiding the entire calendar would be absurd. It is the presence of the
+column that turns the rule on.
 
 ### 2. `Type` — dropdown
 

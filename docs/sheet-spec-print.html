@@ -1,9 +1,10 @@
 <!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+</head><body>
 <title>EO Events Sheet Spec</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
-</head><body><style>
+<style>
   :root{
     --paper:#FBFAF8; --surface:#FFFFFF; --surface-2:#F4F2EE; --surface-3:#EAE7E1;
     --ink:#141311; --ink-2:#565248; --ink-3:#8C877C;
@@ -213,14 +214,20 @@
     <p class="fwhat">Whether members can see this row yet.</p>
     <div class="vocab">
       <div class="v"><span class="dot" style="background:var(--good)"></span><code>Published</code>
-        <span>Live on the calendar.</span></div>
+        <span>Live on the calendar. This exact word, and nothing else, publishes a row.</span></div>
       <div class="v"><span class="dot" style="background:var(--ink-3)"></span><code>Draft</code>
         <span>You are still writing it. Nobody sees it.</span></div>
       <div class="v"><span class="dot" style="background:var(--bad)"></span><code>Cancelled</code>
         <span>It was announced and it is not happening. Removed from the calendar.</span></div>
     </div>
-    <div class="flag w"><b>A blank cell counts as Published.</b> So a half-finished row is
-      visible to everyone until you set it to Draft. Set Draft first, write second.</div>
+    <div class="flag g"><b>A blank cell counts as Draft.</b> Publishing is opt-in: start a
+      row, fill it in over a week if you like, and nobody sees it until you choose
+      <code>Published</code>. A typo does not publish either — <code>Publised</code> is not
+      <code>Published</code>, and the calendar reports it rather than swallowing it.</div>
+    <p style="margin-top:14px">The one exception is a sheet with <b class="ink">no Status
+      column at all</b>, which publishes every row: there is nothing to opt into, and hiding
+      the whole calendar would be absurd. It is the presence of the column that turns the rule
+      on.</p>
   </div>
 
   <div class="field" id="c2">
@@ -650,7 +657,7 @@ The first three steps to take this month</div>
   .rule  { box-shadow:none; border:1px solid rgba(20,19,17,.10); }
   pre    { box-shadow:none; border:1px solid rgba(20,19,17,.10); }
   tr     { break-inside:avoid; }
-  thead  { display:table-header-group; }   /* the migration table repeats its header */
+  thead  { display:table-header-group; }
 
   /* the contents strip is navigation; on paper it is just noise */
   .toc { display:none; }
