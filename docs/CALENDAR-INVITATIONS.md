@@ -90,14 +90,44 @@ secret; they are plain variables.
 
 ### 4. The sheet — paste in the Apps Script
 
+> **"EO Calendar" is a menu that appears in the spreadsheet.** It is not a Google Calendar, and
+> there is no calendar to create: events go to the ordinary Google Calendar of whoever
+> authorises the script. Every Google account already has one.
+
 1. Open the sheet → **Extensions → Apps Script**
-2. Paste [`docs/apps-script/Calendar.gs`](apps-script/Calendar.gs) over the empty file
-3. **Services → + → Google Calendar API → Add** (this turns on the advanced service the script
-   needs to get the event's link back)
-4. Save, then reload the sheet. A new **EO Calendar** menu appears
-5. **EO Calendar → Sync now**, and grant access when asked. Whoever grants it is the account
-   the events belong to — this should be the manager, not a developer
-6. **EO Calendar → Install hourly sync**
+2. Paste [`docs/apps-script/Calendar.gs`](apps-script/Calendar.gs) over everything in `Code.gs`
+3. **Services → + → Google Calendar API → Add**. It appears in the left sidebar as `Calendar`.
+   This is the advanced service the script needs to read back the event's link
+4. Rename the project from *Untitled project* to something like *EO calendar sync*, and
+   **save** — ⌘S. An unsaved script will not run
+5. **Authorise it, as the manager.** The account that grants access is the account the events
+   belong to, so sign in as her, not as a developer. Two ways:
+   * from the script editor: choose **`syncNow`** in the function dropdown (it says `onOpen` by
+     default — that one only builds the menu) and press **Run**
+   * or reload the spreadsheet tab, and use **EO Calendar → Sync now**
+
+   Google will say *"Google hasn't verified this app"*. That is expected for a script you
+   wrote yourself: **Advanced → Go to (project name) (unsafe) → Allow**. It is asking to manage
+   the calendar of the account approving it, which is exactly the intent
+6. **EO Calendar → Which calendar am I writing to?** — it prints the calendar's name and id,
+   and the account it is running as. Set `GOOGLE_CALENDAR_ID` to that id
+7. **EO Calendar → Install hourly sync**
+
+**The menu only appears after the spreadsheet is reloaded**, because `onOpen` runs when the
+sheet opens. If it is not there, reload the tab.
+
+#### Which calendar should the events live on?
+
+`CALENDAR_ID` at the top of the script decides, and it must match `GOOGLE_CALENDAR_ID` on the
+website or invitations will look for events on a calendar they are not on.
+
+| | |
+|---|---|
+| **`'primary'`** — the manager's own calendar | Nothing to set up. Right for getting started. Its weakness is that the events belong to one person: if she leaves the chapter, they leave with her |
+| **A shared calendar** — `c_…@group.calendar.google.com` | Create one in Google Calendar → *Other calendars → + → Create new calendar*, name it *EO Ukraine events*, then share it with the manager as **Make changes to events**. Paste its id into `CALENDAR_ID`. Better for a chapter: it outlives whoever set it up, and a second admin can be added without handing over an account |
+
+Starting with `'primary'` and moving later is fine — but the events do not follow. Move before
+there are many.
 
 The script adds two columns the first time it runs, and fills them itself:
 

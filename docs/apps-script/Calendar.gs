@@ -30,14 +30,51 @@ var TIMEZONE_BY_CODE = {
   GMT: 'Europe/London', UTC: 'Etc/UTC', JST: 'Asia/Tokyo'
 };
 
-var CALENDAR_ID = 'primary';   // or the id of a shared chapter calendar
+/**
+ * WHERE THE EVENTS GO.
+ *
+ *   'primary'  the personal calendar of whoever authorises this script. Nothing to create —
+ *              every Google account already has one. Fine to start with.
+ *
+ *   an id      a shared calendar, e.g. 'c_abc123@group.calendar.google.com'. Better for a
+ *              chapter: it outlives the person who set it up, and a second admin can be given
+ *              "Make changes to events" without handing over an account.
+ *
+ * Whatever this is, GOOGLE_CALENDAR_ID on the website must be set to the SAME calendar, or
+ * invitations will look for the events somewhere they are not. Run "Which calendar am I
+ * writing to?" from the EO Calendar menu to get the exact id.
+ */
+var CALENDAR_ID = 'primary';
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('EO Calendar')
     .addItem('Sync now', 'syncNow')
     .addItem('Install hourly sync', 'installTrigger')
+    .addItem('Which calendar am I writing to?', 'whichCalendar')
     .addToUi();
+}
+
+/** getUi() exists only when this runs from the spreadsheet, not from the script editor. */
+function tell_(message) {
+  Logger.log(message);
+  try { SpreadsheetApp.getUi().alert(message); } catch (e) { /* running from the editor */ }
+}
+
+/**
+ * Prints the calendar the events are going to, and its id.
+ *
+ * Run this after the first sync: the id it prints is what GOOGLE_CALENDAR_ID must be set to
+ * in Cloudflare, or /api/attend will look for the events on the wrong calendar and every
+ * invitation will fail with "that invitation could not be found".
+ */
+function whichCalendar() {
+  var cal = CalendarApp.getCalendarById(
+    CALENDAR_ID === 'primary' ? Session.getEffectiveUser().getEmail() : CALENDAR_ID);
+  var id = cal ? cal.getId() : '(not found)';
+  tell_('Events are being written to:\n\n' + (cal ? cal.getName() : '?') + '\n' + id
+    + '\n\nSet GOOGLE_CALENDAR_ID to exactly that id in Cloudflare and in .env.'
+    + '\nAuthorised as: ' + Session.getEffectiveUser().getEmail());
 }
 
 /** An hourly trigger, so nobody has to remember. Safe to run twice; it replaces itself. */
@@ -46,7 +83,7 @@ function installTrigger() {
     if (t.getHandlerFunction() === 'syncNow') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('syncNow').timeBased().everyHours(1).create();
-  SpreadsheetApp.getUi().alert('The calendar will now sync every hour.');
+  tell_('The calendar will now sync every hour.');
 }
 
 function syncNow() {
