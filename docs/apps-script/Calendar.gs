@@ -53,6 +53,61 @@ function calendarId_() {
   return PropertiesService.getScriptProperties().getProperty('CALENDAR_ID') || 'primary';
 }
 
+/**
+ * People who are put on every event the moment it is created — the organisers, so the event
+ * lands in their own calendars without anybody remembering to add them.
+ *
+ * A Script Property, comma separated, because these are real personal addresses and this file
+ * is in a public repository:
+ *
+ *   Property: DEFAULT_GUESTS
+ *   Value:    someone@example.com, another@example.com
+ */
+function defaultGuests_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('DEFAULT_GUESTS') || '';
+  return raw.split(',').map(function (x) { return x.trim(); })
+    .filter(function (x) { return x.indexOf('@') > 0; })
+    .map(function (email) { return { email: email, responseStatus: 'needsAction' }; });
+}
+
+/**
+ * How long a row must sit untouched before its date or time change is pushed to the calendar.
+ *
+ * Editing a date, then a start time, then an end time is three edits describing ONE change.
+ * Sending each one moves the event three times and emails every guest three times. So the
+ * clock restarts on each edit and only a quiet row is sent — the human finishes, then the
+ * calendar catches up once.
+ */
+var QUIET_MS = 5 * 60 * 1000;
+var PENDING_KEY = 'PENDING_UPDATES';
+
+/** Fields whose change has to reach the calendar. Anything else is the organiser's business. */
+var WATCHED = ['title', 'start_date', 'end_date', 'start_time', 'end_time', 'timezone'];
+
+/** Prompts for the organisers who go on every new event. */
+function setDefaultGuests() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+  var answer = ui.prompt('Default guests',
+    'Comma-separated addresses invited to every NEW event.\n\nCurrently: '
+    + (props.getProperty('DEFAULT_GUESTS') || '(none)'), ui.ButtonSet.OK_CANCEL);
+  if (answer.getSelectedButton() !== ui.Button.OK) return;
+  var v = answer.getResponseText().trim();
+  if (v) props.setProperty('DEFAULT_GUESTS', v); else props.deleteProperty('DEFAULT_GUESTS');
+  tell_('Default guests: ' + (v || '(none)'));
+}
+
+/** Skips the wait, for when you know you have finished editing. */
+function flushNow() {
+  var map = pending_();
+  var ids = Object.keys(map);
+  if (!ids.length) { tell_('Nothing is waiting.'); return; }
+  ids.forEach(function (id) { map[id] = 0; });        // make everything overdue
+  savePending_(map);
+  flushPending();
+  tell_('Applied ' + ids.length + ' pending change(s).');
+}
+
 /** Prompts for the id and stores it, so it never has to be typed into the code. */
 function setCalendarId() {
   var ui = SpreadsheetApp.getUi();
@@ -75,6 +130,8 @@ function onOpen() {
     .addItem('Check published rows', 'checkAll')
     .addItem('Install hourly sync', 'installTrigger')
     .addItem('Set calendar…', 'setCalendarId')
+    .addItem('Set default guests…', 'setDefaultGuests')
+    .addItem('Apply pending changes now', 'flushNow')
     .addItem('Which calendar am I writing to?', 'whichCalendar')
     .addToUi();
 }
@@ -104,14 +161,22 @@ function whichCalendar() {
 /** An hourly trigger, so nobody has to remember. Safe to run twice; it replaces itself. */
 function installTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['syncNow', 'onEditCheck'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+    if (['syncNow', 'onEditCheck', 'flushPending'].indexOf(t.getHandlerFunction()) >= 0) {
+      ScriptApp.deleteTrigger(t);
+    }
   });
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   ScriptApp.newTrigger('syncNow').timeBased().everyHours(1).create();
-  // Installable rather than simple: a simple onEdit may not write notes or read other rows.
+  // Installable rather than simple: a simple onEdit may not write notes or call Calendar.
   ScriptApp.newTrigger('onEditCheck').forSpreadsheet(ss).onEdit().create();
-  tell_('Done. The calendar syncs hourly, and a row marked Published while incomplete is '
-    + 'flagged as soon as you mark it.');
+  // Drains the quiet-period queue. Cheap: it reads one property and stops when empty.
+  ScriptApp.newTrigger('flushPending').timeBased().everyMinutes(5).create();
+  tell_('Done.\n\n'
+    + '• Marking a row Published creates its calendar event and invites the organisers\n'
+    + '• Changing a date or time updates the event about '
+    + Math.round(QUIET_MS / 60000) + ' minutes after you stop editing\n'
+    + '• An incomplete row is flagged the moment you mark it Published\n'
+    + '• An hourly sync catches anything missed');
 }
 
 /**
@@ -186,29 +251,75 @@ function onEditCheck(e) {
   var values = sheet.getDataRange().getValues();
   var head = findHeaderRow_(values);
   if (!head) return;
-  var i = e.range.getRow() - 1;
-  if (i <= head.index || i >= values.length) return;
 
+  // A paste can cover several rows, so every touched row is considered, not just the first.
+  var first = Math.max(e.range.getRow() - 1, head.index + 1);
+  var last = Math.min(e.range.getLastRow() - 1, values.length - 1);
+  var touched = columnsIn_(e.range, head);
+
+  for (var i = first; i <= last; i++) {
+    handleRow_(sheet, values, head, i, touched);
+  }
+}
+
+/** Which of the fields we care about the edit actually covered. */
+function columnsIn_(range, head) {
+  var from = range.getColumn() - 1, to = range.getLastColumn() - 1;
+  var hit = {};
+  for (var field in head.map) {
+    if (head.map[field] >= from && head.map[field] <= to) hit[field] = true;
+  }
+  return hit;
+}
+
+function handleRow_(sheet, values, head, i, touched) {
   var row = values[i];
+  if (!String(get_(row, head.map, 'title') || '').trim()) return;
+
   var statusCell = head.map.status === undefined
     ? null : sheet.getRange(i + 1, head.map.status + 1);
-  var width = Math.max(1, sheet.getLastColumn());
-  var rowRange = sheet.getRange(i + 1, 1, 1, width);
+  var rowRange = sheet.getRange(i + 1, 1, 1, Math.max(1, sheet.getLastColumn()));
 
   if (!isPublished_(row, head.map)) {
     if (statusCell) statusCell.clearNote();
     rowRange.setBackground(null);
     return;
   }
+
   var bad = problems_(row, head.map);
   if (bad.length) {
     if (statusCell) statusCell.setNote('Not ready to publish:\n• ' + bad.join('\n• '));
     rowRange.setBackground('#FBE9E7');
     SpreadsheetApp.getActiveSpreadsheet().toast(bad.join('; '), 'Not ready to publish', 8);
-  } else {
-    if (statusCell) statusCell.clearNote();
-    rowRange.setBackground(null);
+    return;
   }
+  if (statusCell) statusCell.clearNote();
+  rowRange.setBackground(null);
+
+  if (!iso_(get_(row, head.map, 'start_date'))) return;      // dates to be confirmed
+  var eventId = String(get_(row, head.map, 'calendar_event_id') || '').trim();
+
+  // Published, complete, dated, and no event yet: make it now and invite the organisers.
+  if (!eventId) {
+    var ctx = { sheet: sheet, values: values, head: head, map: head.map };
+    var made = createEvent_(ctx, row, i);
+    if (made) {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Calendar event created and the organisers invited.', 'EO Calendar', 6);
+    }
+    return;
+  }
+
+  // It already exists. A change to when it happens is queued rather than sent, so a person
+  // editing a date, then a start time, then an end time moves the event once, not three times.
+  var wants = false;
+  for (var k = 0; k < WATCHED.length; k++) if (touched[WATCHED[k]]) wants = true;
+  if (!wants) return;
+
+  markPending_(eventId);
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'The calendar event will be updated in about ' + Math.round(QUIET_MS / 60000)
+    + ' minutes, once you have finished editing.', 'EO Calendar', 6);
 }
 
 /**
@@ -269,19 +380,8 @@ function syncNow() {
       failed.push('Row ' + (i + 1) + ': the saved event was gone; a new one was created');
     }
 
-    try {
-      var made = Calendar.Events.insert({
-        summary: title,
-        description: description_(row, col),
-        location: String(get_(row, col, 'venue') || get_(row, col, 'location') || ''),
-        start: when.start,
-        end: when.end,
-        guestsCanSeeOtherGuests: false,
-        guestsCanInviteOthers: false
-      }, calendarId_());
-      write_(ctx.sheet, ctx.head, col, i, made.id, made.htmlLink);
-      created++;
-    } catch (err) { failed.push('Row ' + (i + 1) + ': ' + err.message); }
+    if (createEvent_(ctx, row, i)) created++;
+    else failed.push('Row ' + (i + 1) + ': the event could not be created');
   });
 
   var summary = 'Created ' + created + ', updated ' + updated
@@ -291,7 +391,98 @@ function syncNow() {
   tell_(summary);
 }
 
+/* ------------------------------------------------------- the quiet-period queue */
+
+function pending_() {
+  try { return JSON.parse(
+    PropertiesService.getScriptProperties().getProperty(PENDING_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function savePending_(map) {
+  PropertiesService.getScriptProperties().setProperty(PENDING_KEY, JSON.stringify(map));
+}
+
+/**
+ * Restarts the clock for one event. Keyed by the calendar event id rather than the row number,
+ * because sorting the sheet moves rows and would otherwise update the wrong event.
+ */
+function markPending_(eventId) {
+  var map = pending_();
+  map[eventId] = Date.now();
+  savePending_(map);
+}
+
+/**
+ * Runs every few minutes and pushes only the rows that have been quiet for QUIET_MS. Anything
+ * touched more recently is left for the next pass.
+ */
+function flushPending() {
+  var map = pending_();
+  var ids = Object.keys(map);
+  if (!ids.length) return;                            // the common case: cost almost nothing
+
+  var due = ids.filter(function (id) { return Date.now() - map[id] >= QUIET_MS; });
+  if (!due.length) return;
+
+  var ctx = open_();
+  if (!ctx) return;
+
+  var applied = 0;
+  due.forEach(function (id) {
+    delete map[id];
+    var found = null;
+    eachRow_(ctx, function (row, i) {
+      if (String(get_(row, ctx.map, 'calendar_event_id') || '').trim() === id) found = row;
+    });
+    if (!found || !isPublished_(found, ctx.map)) return;
+    if (problems_(found, ctx.map).length) return;
+    if (!iso_(get_(found, ctx.map, 'start_date'))) return;
+
+    var when = times_(found, ctx.map);
+    try {
+      Calendar.Events.patch(
+        { summary: String(get_(found, ctx.map, 'title')).trim(),
+          start: when.start, end: when.end },
+        calendarId_(), id, { sendUpdates: 'all' });
+      applied++;
+    } catch (e) { Logger.log('Deferred update failed for ' + id + ': ' + e.message); }
+  });
+  savePending_(map);
+  if (applied) Logger.log('Applied ' + applied + ' deferred update(s).');
+}
+
 /* --------------------------------------------------------------- calendar io */
+
+/**
+ * Creates the event and puts the organisers on it. Returns the created event, or null.
+ * Used by both the on-edit path and the hourly sync, so a row cannot get two different
+ * treatments depending on which noticed it first.
+ */
+function createEvent_(ctx, row, i) {
+  var when = times_(row, ctx.map);
+  var body = {
+    summary: String(get_(row, ctx.map, 'title')).trim(),
+    description: description_(row, ctx.map),
+    location: String(get_(row, ctx.map, 'venue') || get_(row, ctx.map, 'location') || ''),
+    start: when.start,
+    end: when.end,
+    guestsCanSeeOtherGuests: false,
+    guestsCanInviteOthers: false
+  };
+  var guests = defaultGuests_();
+  if (guests.length) body.attendees = guests;
+
+  try {
+    var made = Calendar.Events.insert(body, calendarId_(),
+      guests.length ? { sendUpdates: 'all' } : {});
+    write_(ctx.sheet, ctx.head, ctx.map, i, made.id, made.htmlLink);
+    return made;
+  } catch (e) {
+    Logger.log('Row ' + (i + 1) + ': ' + e.message);
+    return null;
+  }
+}
 
 function fetch_(eventId) {
   try { return Calendar.Events.get(calendarId_(), eventId); }

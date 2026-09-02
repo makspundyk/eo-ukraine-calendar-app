@@ -139,6 +139,35 @@ Three places it is caught:
 **It does not revert the cell.** People set the status first and fill the row afterwards, and a
 script that undoes their typing gets switched off within a day. It flags, it does not fight.
 
+### When events are created, and when changes are sent
+
+| Moment | What happens |
+|---|---|
+| A row becomes `Published`, is complete, has a date, and `Calendar Event ID` is empty | The event is created **immediately**, and everyone in `DEFAULT_GUESTS` is invited |
+| A date, time, timezone or title is changed on a row that already has an event | Queued, and sent **about five minutes after you stop editing** |
+| Anything else changes — room, description, guests | Nothing. The organiser owns those |
+| Hourly | A sweep catches anything the above missed |
+
+**Why the five-minute wait.** Changing a date, then a start time, then an end time is three
+edits describing *one* change. Sending each one moves the event three times and emails every
+guest three times. The clock **restarts on every edit**, so only a row you have stopped
+touching is sent — you finish, then the calendar catches up once.
+
+The queue is keyed by the calendar event id, not the row number, so sorting the sheet while
+something is queued cannot send the update to the wrong event.
+
+If you know you are finished: **EO Calendar → Apply pending changes now**.
+
+### Default guests
+
+**EO Calendar → Set default guests…**, comma separated. They are invited to every **new** event
+as it is created, so the organisers get it in their own calendars without anyone remembering.
+
+Stored as a Script Property rather than in `Calendar.gs`, because they are real personal
+addresses and that file is in a public repository. Leave it empty and no one is added.
+
+Changing it does not touch events that already exist — it applies to the next one created.
+
 ### A published event with no date yet
 
 That is a legitimate state, not an error — the website has a "Dates to be confirmed" section

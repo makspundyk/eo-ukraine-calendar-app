@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 let src = await readFile('docs/apps-script/Calendar.gs', 'utf8');
 // stub the two Apps Script globals the pure helpers touch
+let props = {};
 const shim = `
+const PropertiesService = { getScriptProperties: () => ({
+  getProperty: (k) => (k in globalThis.__props ? globalThis.__props[k] : null),
+  setProperty: (k, v) => { globalThis.__props[k] = String(v); },
+  deleteProperty: (k) => { delete globalThis.__props[k]; },
+}) };
 const Utilities = { formatDate: (d, _tz, fmt) => {
   const p = (n) => String(n).padStart(2, '0');
   return fmt === 'yyyy-MM-dd'
@@ -11,7 +17,7 @@ const Logger = { log() {} }; const SpreadsheetApp = { getActiveSpreadsheet: () =
 `;
 const mod = await import('data:text/javascript,' + encodeURIComponent(
   shim + src + '\nexport { times_, nextDay_, addMinutes_, iso_, findHeaderRow_, problems_, '
-  + 'isPublished_ };'));
+  + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -43,6 +49,41 @@ check('an evening event ending past midnight rolls to the next day',
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime.startsWith('2026-09-17'),
   T({ 'Start Date':'2026-09-16', 'Start Time':'22:00', 'End Time':'01:00' }).end.dateTime);
 check('single-digit hours are padded', mod.addMinutes_('09:00', 90) === '10:30');
+
+console.log('\nthe quiet period before a date change is sent');
+globalThis.__props = {};
+mod.markPending_('evt-a');
+check('an edit queues the event rather than sending it', 'evt-a' in mod.pending_());
+const t0 = mod.pending_()['evt-a'];
+await new Promise((r) => setTimeout(r, 5));
+mod.markPending_('evt-a');
+check('a second edit RESTARTS the clock rather than adding a second entry',
+  Object.keys(mod.pending_()).length === 1 && mod.pending_()['evt-a'] > t0);
+check('the wait is five minutes', mod.QUIET_MS === 300000, String(mod.QUIET_MS));
+const age = Date.now() - mod.pending_()['evt-a'];
+check('a freshly edited row is NOT due yet', age < mod.QUIET_MS);
+mod.savePending_({ 'evt-old': Date.now() - mod.QUIET_MS - 1000 });
+check('a row quiet for longer than the wait IS due',
+  Date.now() - mod.pending_()['evt-old'] >= mod.QUIET_MS);
+check('the queue is keyed by event id, so sorting the sheet cannot misroute an update',
+  Object.keys(mod.pending_()).every((k) => k.startsWith('evt')));
+check('only when/what fields are watched',
+  mod.WATCHED.join() === 'title,start_date,end_date,start_time,end_time,timezone',
+  mod.WATCHED.join());
+check('the room and the description are NOT watched',
+  !mod.WATCHED.includes('location') && !mod.WATCHED.includes('venue')
+  && !mod.WATCHED.includes('summary'));
+
+console.log('\ndefault guests');
+globalThis.__props = { DEFAULT_GUESTS: ' a@b.com , c@d.com ,,not-an-email ' };
+const g = mod.defaultGuests_();
+check('parsed, trimmed, and rubbish dropped',
+  g.length === 2 && g[0].email === 'a@b.com' && g[1].email === 'c@d.com',
+  JSON.stringify(g));
+check('each is invited, not marked as accepted on their behalf',
+  g.every((x) => x.responseStatus === 'needsAction'));
+globalThis.__props = {};
+check('unset means nobody is added', mod.defaultGuests_().length === 0);
 
 console.log('\nrefusing to publish an incomplete row');
 const V = ['Status','Type','Title','Start Date','End Date','Start Time','End Time','Registration URL'];
