@@ -301,13 +301,20 @@ The script adds it and fills it. It is the difference between creating and updat
 |---|---|
 | empty | creates a new event, writes the id and the link back |
 | has an id | updates **only** the title and the times on that event |
-| has an id, row no longer Published | **cancels** the event and **keeps the id** |
+| has an id, row set to **`Draft`** | **cancels** the event and **keeps the id** |
 | has an id, row published again | brings the same event back — the guests already on it are still on it |
+| has an id, row set to **`Cancelled`** | **deletes** the event, tells the guests, and clears the id and the link |
 | has an id, but the event was deleted in Google | creates a fresh one and replaces the id, rather than failing forever |
 
-The fourth row is the reason the id is kept rather than cleared on unpublishing. Clearing it
-would mean re-publishing built a *second* event, and everybody already invited would be sitting
-on the first one, which they had been told was cancelled.
+**`Draft` and `Cancelled` mean opposite things to the calendar**, which is why they are treated
+differently. Draft is *not ready yet*, so the event is cancelled but the id is kept and
+re-publishing brings the same event back with everybody still on it — clearing the id would
+build a *second* event and leave those people on the first. Cancelled is *not happening*, so
+the event is removed from everybody's calendar and the row forgets it.
+
+Deleting is less final than it sounds: **`Attendees Emails` is deliberately left alone**. It is
+the only record of who was coming, so setting the row back to `Published` rebuilds the event
+and re-invites the same people.
 
 **Never type in `Calendar Event ID`.** It is the only link between the row and the real event.
 

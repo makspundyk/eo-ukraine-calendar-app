@@ -328,6 +328,15 @@ function handleRow_(sheet, values, head, i, touched) {
   if (!isPublished_(row, head.map)) {
     if (statusCell) statusCell.clearNote();
     rowRange.setBackground(null);
+
+    var existingId = String(get_(row, head.map, 'calendar_event_id') || '').trim();
+    if (existingId && touched.status && isCancelled_(row, head.map)) {
+      var ctx0 = { sheet: sheet, values: values, head: head, map: head.map };
+      deleteEvent_(ctx0, row, i, existingId);
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Calendar event deleted and the guests told. Set the row back to Published to rebuild '
+        + 'it — the guest list in "Attendees Emails" is kept.', 'EO Calendar', 12);
+    }
     return;
   }
 
@@ -414,7 +423,7 @@ function syncNow() {
      'Invite Subscribers?', 'Subscribers Invited At']);
   ctx = open_();                                     // re-read: columns may have been added
 
-  var created = 0, updated = 0, cancelled = 0, revived = 0, unflagged = 0;
+  var created = 0, updated = 0, cancelled = 0, revived = 0, unflagged = 0, deleted = 0;
   var skipped = [], failed = [];
 
   eachRow_(ctx, function (row, i) {
@@ -428,10 +437,16 @@ function syncNow() {
     var eventId = String(get_(row, col, 'calendar_event_id') || '').trim();
     var published = isPublished_(row, col);
 
-    // Not published: cancel the event but KEEP the id. Clearing it would mean that
-    // re-publishing built a second event and everybody already invited was left on the first.
     if (!published) {
-      if (eventId && setStatus_(eventId, 'cancelled')) cancelled++;
+      if (!eventId) return;
+      if (isCancelled_(row, col)) {
+        // Not happening. Remove it from everybody's calendar and forget the id.
+        if (deleteEvent_(ctx, row, i, eventId)) deleted++;
+      } else {
+        // Draft: cancel it but KEEP the id, or re-publishing would build a SECOND event and
+        // leave everybody already invited on the first — which they were told was cancelled.
+        if (setStatus_(eventId, 'cancelled')) cancelled++;
+      }
       return;
     }
 
@@ -479,7 +494,8 @@ function syncNow() {
   });
 
   var summary = 'Created ' + created + ', updated ' + updated
-    + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled + '.'
+    + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled
+    + (deleted ? ', deleted ' + deleted : '') + '.'
     + (unflagged ? '\nCleared ' + unflagged + ' stale "not ready" flag(s).' : '');
   if (skipped.length) summary += '\n\nNot in the calendar yet:\n' + skipped.join('\n');
   if (failed.length) summary += '\n\nProblems:\n' + failed.join('\n');
@@ -862,6 +878,36 @@ function fetch_(eventId) {
   catch (e) { return null; }                          // 404, or a different calendar
 }
 
+/**
+ * Removes the event and clears the two columns that pointed at it.
+ *
+ * Guests are notified, because it was in their calendars and they are entitled to know it is
+ * off. `Attendees Emails` is deliberately left alone: it is the only record of who was coming,
+ * and it is what lets the row be rebuilt if the cancellation was a mistake.
+ */
+function deleteEvent_(ctx, row, i, eventId) {
+  try {
+    Calendar.Events.remove(calendarId_(), eventId, { sendUpdates: 'all' });
+  } catch (e) {
+    // Already gone in Google. Clearing the columns is still the right end state.
+    Logger.log('Delete failed for ' + eventId + ' (clearing anyway): ' + e.message);
+  }
+  var head = findHeaderRow_(ctx.sheet.getDataRange().getValues());
+  if (head) {
+    if (head.map.calendar_event_id !== undefined) {
+      ctx.sheet.getRange(i + 1, head.map.calendar_event_id + 1).setValue('');
+    }
+    if (head.map.calendar_link !== undefined) {
+      ctx.sheet.getRange(i + 1, head.map.calendar_link + 1).setValue('');
+    }
+    // The tick would otherwise fire again the moment a new event is created for this row.
+    if (head.map.subscribers_invited !== undefined) {
+      ctx.sheet.getRange(i + 1, head.map.subscribers_invited + 1).setValue('');
+    }
+  }
+  return true;
+}
+
 function setStatus_(eventId, status) {
   var existing = fetch_(eventId);
   if (!existing || existing.status === status) return false;
@@ -903,6 +949,22 @@ function eachRow_(ctx, fn) {
   for (var i = ctx.head.index + 1; i < ctx.values.length; i++) {
     if (String(get_(ctx.values[i], ctx.map, 'title') || '').trim()) fn(ctx.values[i], i);
   }
+}
+
+/**
+ * Cancelled means it is not happening. Draft means it is not ready YET — a difference the
+ * calendar has to respect, because the two need opposite treatment:
+ *
+ *   Draft      the event is cancelled in Google but the id is KEPT, so re-publishing brings
+ *              the same event back with everybody still on it
+ *   Cancelled  the event is DELETED and the id and link are cleared
+ *
+ * Deleting is not as final as it sounds: `Attendees Emails` still holds the guest list, so
+ * setting the row back to Published rebuilds the event and re-invites the same people.
+ */
+function isCancelled_(row, col) {
+  if (col.status === undefined) return false;
+  return String(get_(row, col, 'status') || '').trim().toLowerCase() === 'cancelled';
 }
 
 function isPublished_(row, col) {

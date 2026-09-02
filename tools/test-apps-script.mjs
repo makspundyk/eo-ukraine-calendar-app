@@ -22,7 +22,7 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
   + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_, isPast_, '
-  + 'today_ };'));
+  + 'today_, isCancelled_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -261,6 +261,14 @@ check('a Draft row is not published', !mod.isPublished_(vrow({ ...complete, Stat
 check('a blank status is not published', !mod.isPublished_(vrow({ ...complete, Status:'' }), vhead.map));
 check('with no Status column at all, everything publishes',
   mod.isPublished_(['x'], {}) === true);
+
+// Draft and Cancelled both stop a row publishing, but they mean opposite things to the
+// calendar: Draft keeps the event so it can come back, Cancelled removes it.
+check('Cancelled is recognised', mod.isCancelled_(vrow({ ...complete, Status:'Cancelled' }), vhead.map));
+check('...case does not matter', mod.isCancelled_(vrow({ ...complete, Status:'cancelled' }), vhead.map));
+check('Draft is NOT cancelled', !mod.isCancelled_(vrow({ ...complete, Status:'Draft' }), vhead.map));
+check('blank is NOT cancelled', !mod.isCancelled_(vrow({ ...complete, Status:'' }), vhead.map));
+check('Published is NOT cancelled', !mod.isCancelled_(vrow(complete), vhead.map));
 
 console.log(failed ? `\n${failed} FAILED\n` : '\nall checks passed\n');
 process.exit(failed ? 1 : 0);

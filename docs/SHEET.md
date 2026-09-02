@@ -104,8 +104,11 @@ never required — reach for it only if permanent links matter to you.
 Whether members can see the row yet.
 
 - `Published` — live on the calendar. **This exact word, and nothing else, publishes a row.**
-- `Draft` — you are still writing it. Nobody sees it.
-- `Cancelled` — it was announced and it is not happening. Removed from the calendar.
+- `Draft` — you are still writing it. Nobody sees it. Any calendar event is cancelled but
+  kept, so publishing again restores the same one with its guests.
+- `Cancelled` — it was announced and it is not happening. The Google Calendar event is
+  **deleted** and the guests are told. Setting the row back to `Published` rebuilds it and
+  re-invites the same people, because the guest list is kept.
 
 **A blank cell counts as Draft.** Publishing is opt-in: start a row, fill it in over a week if
 you like, and nobody sees it until you choose `Published`. A half-written event in front of the
