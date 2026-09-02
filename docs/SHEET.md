@@ -43,6 +43,13 @@ of the same thing both work. Two rows identical in title, date, time, place and 
 same event typed twice; the calendar still shows both, but flags it, because at that point
 only the row number tells them apart and that is not stable.
 
+### One more optional column: `Calendar Link`
+
+Paste the URL of the organiser's own Google Calendar event and the event page shows
+**“Open the calendar invitation”** instead of offering a copy — so a later change to the room
+or the time reaches everyone, because there is only one event. Leave it empty and the ordinary
+add-to-calendar buttons appear. See [`CALENDAR-BUTTON.md`](CALENDAR-BUTTON.md).
+
 ### If you want links that never change
 
 Add one optional column, **`Slug`**, and put a short lowercase name in it:

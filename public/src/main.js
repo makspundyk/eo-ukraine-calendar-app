@@ -71,6 +71,7 @@ async function navigate(route) {
     await page.mount?.(data, { rerender: (d) => {
       if (parse().path !== route.path) return;      // the reader has already moved on
       document.getElementById('page').innerHTML = page.render(d);
+      page.mount?.(d);            // the repaint dropped the listeners; put them back
     } });
     if (route.name === 'event') window.scrollTo({ top: 0, behavior: 'instant' });
   } catch (err) {

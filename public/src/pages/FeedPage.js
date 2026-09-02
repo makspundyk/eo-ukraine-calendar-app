@@ -146,5 +146,14 @@ export function render({ events, tbc, q, counts, facets }) {
           <span class="factline">${e([ev.date_note, placeLabel(ev)].filter(Boolean).join(' · '))}</span>
           ${register(ev.registration_url, { small: true, ghost: true, label: 'Register interest' })}
         </div>`).join('')}
-    </div>` : ''}`;
+    </div>` : ''}
+
+  <div class="subscribe">
+    <div>
+      <b>Subscribe to this calendar</b>
+      <span>Every event lands in your own calendar, and stays right when a date or a room
+        changes. One click, then never again.</span>
+    </div>
+    <a class="register ghost sm" href="/api/calendar.ics">Subscribe</a>
+  </div>`;
 }

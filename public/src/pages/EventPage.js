@@ -14,6 +14,7 @@
 import { useEventsApi } from '../api/useEventsApi.js';
 import { chip, register, icon } from '../components/ui.js';
 import { richText } from '../richtext.js';
+import { vevent, googleUrl } from '../ics.js';
 import {
   escape as e, dayNum, dow, fullDate, dateRange, timeLabel, placeLabel,
   placeShort, nights,
@@ -43,6 +44,7 @@ export async function load(route) {
 
 /** Fetch the rest, then repaint in place. */
 export async function mount({ ev, partial }, { rerender } = {}) {
+  wireDownload(ev);
   if (!partial || !rerender) return;
   const full = await api.byId(ev.id);
   if (full) rerender({ ev: full, partial: false });
@@ -113,6 +115,66 @@ const row = (ic, label, value, sub = '') => (value ? `
       <b>${e(value)}</b>${sub ? `<em>${e(sub)}</em>` : ''}</div>
   </div>` : '');
 
+/**
+ * Add to calendar.
+ *
+ * Two links rather than a menu, because a menu for two things is a click that buys nothing.
+ * Both make a COPY on the member's own calendar — an organiser's later edit will not reach
+ * it, which is a property of the format and not of this button. The subscribe link in the
+ * footer is the one that stays in step, and it is offered right next to these so the choice
+ * is visible rather than assumed.
+ *
+ * The .ics is built here and handed over as a Blob: no round trip, and it works identically
+ * when the page is running on the demo calendar.
+ */
+const addToCalendar = (ev) => {
+  if (!ev.start) return '';
+
+  // The organiser keeps one real event, and this opens it. Whatever they change afterwards —
+  // the room, the time, the agenda — everyone sees, because there is only one event.
+  if (ev.calendar_url) {
+    return `
+    <div class="addcal">
+      <span class="addcal-label">${icon('cal')} Add to your calendar</span>
+      <a class="addcal-btn primary" href="${e(ev.calendar_url)}" target="_blank"
+         rel="noopener">Open the calendar invitation</a>
+      <span class="addcal-note">This is the organiser's event, so any later change to the
+        room or the time reaches you automatically.</span>
+    </div>`;
+  }
+
+  const g = googleUrl(ev, { origin: location.origin });
+  return `
+  <div class="addcal">
+    <span class="addcal-label">${icon('cal')} Add to your calendar</span>
+    <a class="addcal-btn" href="${e(g)}" target="_blank" rel="noopener">Google Calendar</a>
+    <a class="addcal-btn" href="#" data-ics="${e(ev.id)}">Download&nbsp;.ics</a>
+    <span class="addcal-note">This puts a copy in your own calendar. To stay in step with
+      later changes, subscribe to the whole calendar from the foot of the events page.</span>
+  </div>`;
+};
+
+/**
+ * The download is wired after render rather than with an inline handler, because the
+ * Content-Security-Policy forbids inline script — see public/_headers.
+ */
+export function wireDownload(ev) {
+  const link = document.querySelector('[data-ics]');
+  if (!link) return;
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    const text = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+      'PRODID:-//EO Ukraine//Community calendar//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      vevent(ev, { origin: location.origin }), 'END:VCALENDAR'].join('\r\n') + '\r\n';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ev.id}.ics`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
+
 const initials = (name) => name.split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 /* --- page --------------------------------------------------------------- */
@@ -151,6 +213,7 @@ export function render({ ev, partial }) {
             ? 'We will email you as soon as the date is set.'
             : 'Opens the EO registration page. Takes about a minute.'}</p>
         </div>
+        ${addToCalendar(ev)}
       </section>
 
       ${paras ? card('About this event', `<div class="rich">${paras}</div>`)

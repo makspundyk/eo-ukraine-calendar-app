@@ -7,7 +7,7 @@
     "dev": "node serve.mjs",
     "dev:cf": "node tools/dev-cf.mjs",
     "data": "python3 data/normalize.py",
-    "test": "node tools/test-parser.mjs && node tools/test-api.mjs",
+    "test": "node tools/test-parser.mjs && node tools/test-api.mjs && node tools/test-ics.mjs",
     "shots": "node tools/shots.mjs"
   },
   "devDependencies": {

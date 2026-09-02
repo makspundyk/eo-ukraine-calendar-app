@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, dirname } from 'node:path';
 import { getCalendar, readConfig } from './lib/calendar.mjs';
+import { getFeed } from './lib/ics-feed.mjs';
 
 const HERE = dirname(new URL(import.meta.url).pathname);
 const ROOT = join(HERE, 'public');
@@ -89,6 +90,16 @@ const HEADERS = await globalHeaders();
 
 createServer(async (req, res) => {
   let p = new URL(req.url, 'http://x').pathname;
+
+  if (p === '/api/calendar.ics') {
+    const feed = await getFeed(ENV, { origin: `http://localhost:${PORT}` });
+    console.log(`  ${feed.logLine}`);
+    if (!feed.ok) return res.writeHead(feed.status).end('');
+    res.writeHead(200, { ...HEADERS, 'content-type': 'text/calendar; charset=utf-8',
+      'content-disposition': 'inline; filename="eo-ukraine-events.ics"',
+      'cache-control': 'no-store' });
+    return res.end(feed.text);
+  }
 
   if (p === '/api/calendar') {
     const q = new URL(req.url, 'http://x').searchParams;
