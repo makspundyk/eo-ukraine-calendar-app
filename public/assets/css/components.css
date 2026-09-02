@@ -43,8 +43,10 @@
 
 .slot{display:grid;grid-template-columns:104px 1fr;grid-column:1 / -1;
   padding-bottom:var(--sp-5)}
-.slot-rail{position:relative;padding-top:22px}
-.slot-rail .dot{position:absolute;left:17px;top:22px;width:14px;height:14px;border-radius:50%;
+.slot-rail{position:relative;padding-top:34px}
+/* Above the number, not beside it. Both sit on the timeline's own x, so the dot has to be
+   lifted clear or it lands on top of the date. */
+.slot-rail .dot{position:absolute;left:17px;top:6px;width:14px;height:14px;border-radius:50%;
   background:var(--surface);box-shadow:0 0 0 2px var(--rule);transition:box-shadow .2s ease}
 .slot-rail .dot.learning{box-shadow:0 0 0 2px var(--t-learning)}
 .slot-rail .dot.forum{box-shadow:0 0 0 2px var(--t-forum)}
@@ -52,7 +54,12 @@
 .slot-rail .dot.global{box-shadow:0 0 0 2px var(--t-global)}
 .slot-rail .dot.social{box-shadow:0 0 0 2px var(--t-social)}
 .slot:hover .dot{box-shadow:0 0 0 4px currentColor}
-.slot-rail .when{padding-left:52px;font-size:12px;line-height:1.35;color:var(--ink-3);
+/* Centred on the timeline, not padded away from it. `.when` is a span holding a block-level
+   day number, so a padding-left never reached the number — the dot sat on the line and the
+   date sat to the left of it, sharing no axis with anything. A fixed box centred on the line's
+   own x puts the dot, the number and the weekday on one vertical. */
+.slot-rail .when{display:block;width:48px;text-align:center;
+  font-size:12px;line-height:1.35;color:var(--ink-3);
   font-variant-numeric:tabular-nums}
 .slot-rail .when b{display:block;font-size:22px;font-weight:600;color:var(--ink);
   letter-spacing:-.02em;line-height:1.1}
@@ -280,8 +287,9 @@
   .card-overlay{padding:var(--sp-3) var(--sp-4)}
   .card-body{padding:var(--sp-3) var(--sp-4) var(--sp-4)}
   .rail-line{left:13px}
-  .slot-rail .dot{left:7px}
-  .slot-rail .when{padding-left:30px;font-size:11px}
+  .slot-rail .dot{left:7px;top:4px}
+  .slot-rail .when{width:28px;font-size:11px}
+  .slot-rail{padding-top:28px}
   .slot-rail .when b{font-size:18px}
   .card-cover{height:104px}
   .ev-hero{height:min(42vh,320px);min-height:260px}
