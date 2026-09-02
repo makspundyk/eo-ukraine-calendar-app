@@ -154,6 +154,11 @@ objects. Two files because they have two jobs; only `lib/` runs in production. E
 sheet is handled there, once, and recorded in `data_issues[]` rather than patched silently in
 a template — so a fix stays visible the next time the sheet changes.
 
+This project is the reference implementation for
+[`docs/CLOUDFLARE-POC-STANDARD.md`](docs/CLOUDFLARE-POC-STANDARD.md) — how to build a POC with
+a public front end and a private data source so it deploys to Cloudflare from the first commit.
+Read that before starting a similar project.
+
 **Before wiring the live sheet, read [`docs/SHEET.md`](docs/SHEET.md)** — the 22-column
 standard the sheet has to follow, and the ten things the current file gets wrong.
 [`docs/EO-events-sheet-standard.pdf`](docs/EO-events-sheet-standard.pdf) is the same document
