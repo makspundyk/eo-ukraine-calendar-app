@@ -570,8 +570,12 @@
    over the site, several of which style their own spans as blocks. A bare class loses to
    `.subscribe span`, and the icon drops onto a line of its own. */
 span.info-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:4px}
-.info{display:grid;place-items:center;width:24px;height:24px;flex:none;
-  color:var(--ink-3);border-radius:50%;transition:color .15s ease,background .15s ease}
+/* `button.info` for the same reason as `span.info-wrap`: forms here size their own buttons —
+   `.attend button{height:34px}` — and a bare class loses to that, which stretched the hover
+   circle into an egg. The width and height must stay equal or the border-radius is an oval. */
+button.info{display:grid;place-items:center;width:24px;height:24px;min-height:0;padding:0;
+  flex:none;color:var(--ink-3);border-radius:50%;
+  transition:color .15s ease,background .15s ease}
 .info svg{width:15px;height:15px}
 .info:hover{color:var(--accent);background:var(--accent-soft)}
 .info:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
