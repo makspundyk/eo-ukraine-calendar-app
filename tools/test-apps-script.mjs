@@ -22,7 +22,8 @@ const mod = await import('data:text/javascript,' + encodeURIComponent(
   + 'isPublished_, defaultGuests_, markPending_, pending_, savePending_, QUIET_MS, WATCHED, '
   + 'description_, durationLabel_, minutesBetween_, attendeeLines_, checked_, '
   + 'pendingInvites_, savePendingInvites_, attendeeEmails_, recordedEmails_, isPast_, '
-  + 'today_, isCancelled_, fingerprint_, mayReplace_, rememberWritten_ };'));
+  + 'today_, isCancelled_, fingerprint_, mayReplace_, rememberWritten_, '
+  + 'interestedEmails_ };'));
 
 let failed = 0;
 const check = (n, c, d='') => { console.log(`  ${c?'✓':'✗'} ${n}${c?'':`  <- ${d}`}`); if(!c) failed++; };
@@ -135,6 +136,20 @@ check('read back for a rebuild, whatever the separator',
   back.join() === 'a@x.com,b@x.com,c@x.com', back.join());
 check('rubbish is dropped rather than invited', !back.join().includes('not-an-address'));
 check('an empty column recovers nothing', mod.recordedEmails_(['t','','',''], rhead.map).length === 0);
+
+// The point of `Interested Emails`: somebody says "I want to come" months before there is a
+// date, and the moment the row is published they are on the event with everybody else. If
+// this column is not read at creation, their answer was collected and then thrown away.
+const ihead = mod.findHeaderRow_([['Title', 'Start Date', 'Status', 'Interested Emails']]);
+const keen = mod.interestedEmails_(['t', '', 'Published',
+  ' Keen@X.com, second@x.com \n third@x.com ; rubbish '], ihead.map);
+check('the interested are read, whatever the separator',
+  keen.join() === 'keen@x.com,second@x.com,third@x.com', keen.join());
+check('rubbish is dropped rather than invited', !keen.join().includes('rubbish'));
+check('an empty column invites nobody',
+  mod.interestedEmails_(['t','','',''], ihead.map).length === 0);
+check('a sheet with no such column invites nobody',
+  mod.interestedEmails_(['t','','',''], rhead.map).length === 0);
 
 console.log('\nthe invitation body');
 const D = ['Status','Type','Title','Start Date','End Date','Start Time','End Time','Timezone',

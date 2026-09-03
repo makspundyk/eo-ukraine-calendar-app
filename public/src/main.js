@@ -236,6 +236,38 @@ document.addEventListener('click', (ev) => {
   navigate(parse());
 });
 
+/**
+ * The "i" bubbles. CSS already shows them on hover and on focus; this is the tap, which is
+ * the only case CSS cannot do — and the one that matters most, because a phone is where a
+ * paragraph under every form hurts most.
+ *
+ * One open at a time, and anything else closes it. A tooltip left behind on a page somebody
+ * has moved on from is litter.
+ */
+document.addEventListener('click', (ev) => {
+  const wrap = ev.target.closest('.info-wrap');
+  for (const open of document.querySelectorAll('.info-wrap.open')) {
+    if (open === wrap) continue;
+    open.classList.remove('open');
+    open.querySelector('.info')?.setAttribute('aria-expanded', 'false');
+  }
+  if (!wrap || !ev.target.closest('.info')) return;
+  ev.preventDefault();
+  // The label around a checkbox would otherwise tick it: the icon sits INSIDE that label,
+  // because it is explaining that checkbox and belongs beside it.
+  ev.stopPropagation();
+  const on = wrap.classList.toggle('open');
+  wrap.querySelector('.info').setAttribute('aria-expanded', String(on));
+});
+
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  for (const open of document.querySelectorAll('.info-wrap.open')) {
+    open.classList.remove('open');
+    open.querySelector('.info')?.setAttribute('aria-expanded', 'false');
+  }
+});
+
 // A table row is a link; making the whole row clickable is the difference between a table
 // you can use on a phone and one you cannot.
 document.addEventListener('click', (ev) => {

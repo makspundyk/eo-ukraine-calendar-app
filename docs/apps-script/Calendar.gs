@@ -477,6 +477,7 @@ function syncNow() {
   ctx = open_();                                     // re-read: columns may have been added
 
   var created = 0, updated = 0, cancelled = 0, revived = 0, unflagged = 0, deleted = 0;
+  var interested = 0;
   var skipped = [], failed = [];
 
   eachRow_(ctx, function (row, i) {
@@ -525,6 +526,8 @@ function syncNow() {
     if (eventId) {
       var existing = fetch_(eventId);
       if (existing) {
+        // Before anything else: anybody who asked to come and is not on it yet.
+        interested += inviteInterested_(ctx, row, i, eventId, existing);
         writeAttendees_(ctx, i, existing);
         if (existing.status === 'cancelled') revived++;
         // Quietly: the sweep is catching up, not announcing anything.
@@ -545,6 +548,7 @@ function syncNow() {
   var summary = 'Created ' + created + ', updated ' + updated
     + (revived ? ', restored ' + revived : '') + ', cancelled ' + cancelled
     + (deleted ? ', deleted ' + deleted : '') + '.'
+    + (interested ? '\nInvited ' + interested + ' who had registered interest.' : '')
     + (unflagged ? '\nCleared ' + unflagged + ' stale "not ready" flag(s).' : '');
   if (skipped.length) summary += '\n\nNot in the calendar yet:\n' + skipped.join('\n');
   if (failed.length) summary += '\n\nProblems:\n' + failed.join('\n');
@@ -651,6 +655,45 @@ function subscribers_() {
     out.push({ email: email, name: iName < 0 ? '' : String(values[i][iName] || '').trim() });
   }
   return out;
+}
+
+/**
+ * Puts anyone in `Interested Emails` who is not yet on the event onto it.
+ *
+ * Creation already does this, so in the ordinary run of things there is nothing here to do —
+ * interest can only be registered while a row has no date, and by the time it has one the
+ * event is built from the column. This is for the two cases that are not ordinary: a name
+ * typed into the column by hand after the event exists, and interest registered in the
+ * seconds between the sheet deciding to create the event and Google returning it.
+ *
+ * Appends. Everyone already on the event keeps the reply they gave.
+ */
+function inviteInterested_(ctx, row, i, eventId, event) {
+  if (!event || event.status === 'cancelled') return 0;
+
+  var already = {};
+  (event.attendees || []).forEach(function (a) {
+    if (a.email) already[String(a.email).toLowerCase()] = true;
+  });
+  var adding = interestedEmails_(row, ctx.map).filter(function (e) { return !already[e]; });
+  if (!adding.length) return 0;
+
+  var attendees = (event.attendees || []).slice();
+  adding.forEach(function (email) {
+    attendees.push({ email: email, responseStatus: 'needsAction' });
+  });
+
+  var updated;
+  try {
+    updated = Calendar.Events.patch({ attendees: attendees, guestsCanSeeOtherGuests: false,
+                                      guestsCanInviteOthers: false },
+                                    calendarId_(), eventId, { sendUpdates: 'all' });
+  } catch (e) {
+    Logger.log('Inviting the interested failed for ' + eventId + ': ' + e.message);
+    return 0;
+  }
+  writeAttendees_(ctx, i, updated || fetch_(eventId));
+  return adding.length;
 }
 
 /**
@@ -844,6 +887,18 @@ function writeAttendees_(ctx, rowIndex, event) {
     // attendees would otherwise wipe the only copy of who was coming.
     if (emails && String(flat.getValue() || '').trim() !== emails) flat.setValue(emails);
   }
+}
+
+/**
+ * Everybody who registered interest in this row through the website, plus anybody typed into
+ * the column by hand — the two are indistinguishable on purpose, so a secretary who is told
+ * about somebody in person can add them the same way.
+ */
+function interestedEmails_(row, col) {
+  return String(get_(row, col, 'interested_emails') || '')
+    .split(/[,;\n]/)
+    .map(function (x) { return x.trim().toLowerCase(); })
+    .filter(function (x) { return x.indexOf('@') > 0; });
 }
 
 /** Addresses previously recorded for this row, for rebuilding a lost event. */
@@ -1063,15 +1118,22 @@ function createEvent_(ctx, row, i) {
     guestsCanSeeOtherGuests: false,
     guestsCanInviteOthers: false
   };
-  // The organisers, plus anybody this row remembers from an event that no longer exists.
+  // Three lists, in order: the organisers; anybody this row remembers from an event that no
+  // longer exists; and everybody who registered interest while the date was still unknown.
+  //
+  // That third one is the whole point of `Interested Emails`. Somebody says "I want to come"
+  // months before there is a date, and this is the moment their answer is worth something:
+  // the date is set, the row goes Published, and they are on the event with everybody else
+  // rather than waiting for a person to remember they exist.
   var guests = defaultGuests_();
   var seen = {};
   guests.forEach(function (g) { seen[g.email.toLowerCase()] = true; });
-  recordedEmails_(row, ctx.map).forEach(function (email) {
-    if (seen[email]) return;
-    seen[email] = true;
-    guests.push({ email: email, responseStatus: 'needsAction' });
-  });
+  recordedEmails_(row, ctx.map).concat(interestedEmails_(row, ctx.map))
+    .forEach(function (email) {
+      if (seen[email]) return;
+      seen[email] = true;
+      guests.push({ email: email, responseStatus: 'needsAction' });
+    });
   if (guests.length) body.attendees = guests;
 
   try {

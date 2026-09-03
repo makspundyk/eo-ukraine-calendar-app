@@ -12,7 +12,7 @@
  * question; a member who only wants the date never has to read the paragraphs.
  */
 import { useEventsApi } from '../api/useEventsApi.js';
-import { chip, register, action, icon } from '../components/ui.js';
+import { chip, register, action, icon, info } from '../components/ui.js';
 import { richText } from '../richtext.js';
 import { vevent, googleUrl } from '../ics.js';
 
@@ -180,12 +180,9 @@ const addToCalendar = (ev) => {
                placeholder="your@email.com" aria-label="Your email address" />
         <button type="submit" class="addcal-btn primary">Send it to me</button>
         <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
-          Invite me to future events too</label>
+          Invite me to future events too${info(INVITATION)}</label>
       </form>
-      <span class="addcal-note" data-attend-note>The organiser's own event, so the room and any
-        later change reach you automatically. Untick the box and your address is used for this
-        invitation only; leave it ticked and it joins the chapter's list, which you can leave
-        from any invitation.</span>
+      <span class="addcal-note" data-attend-note></span>
     </div>`;
   }
 
@@ -195,22 +192,23 @@ const addToCalendar = (ev) => {
   if (ev.calendar_url) {
     return `
     <div class="addcal">
-      <span class="addcal-label">${icon('cal')} Add to your calendar</span>
+      <span class="addcal-label">${icon('cal')} Add to your calendar${info(
+        'This is the organiser\'s own event rather than a copy of it, so any later change to '
+        + 'the room or the time reaches you automatically.')}</span>
       <a class="addcal-btn primary" href="${e(ev.calendar_url)}" target="_blank"
          rel="noopener">Open the calendar invitation</a>
-      <span class="addcal-note">This is the organiser's event, so any later change to the
-        room or the time reaches you automatically.</span>
     </div>`;
   }
 
   const g = googleUrl(ev, { origin: location.origin });
   return `
   <div class="addcal">
-    <span class="addcal-label">${icon('cal')} Add to your calendar</span>
+    <span class="addcal-label">${icon('cal')} Add to your calendar${info(
+      'This puts a COPY in your own calendar, so a later change by the organiser will not '
+      + 'reach it. To stay in step, subscribe to the whole calendar from the foot of the '
+      + 'events page.')}</span>
     <a class="addcal-btn" href="${e(g)}" target="_blank" rel="noopener">Google Calendar</a>
     <a class="addcal-btn" href="#" data-ics="${e(ev.id)}">Download&nbsp;.ics</a>
-    <span class="addcal-note">This puts a copy in your own calendar. To stay in step with
-      later changes, subscribe to the whole calendar from the foot of the events page.</span>
   </div>`;
 };
 
@@ -265,27 +263,20 @@ export function wireAttend() {
   });
 }
 
-/**
- * Register interest, from either place it is offered: its own form on an event that cannot be
- * joined, or the quiet second button under the invitation form.
- *
- * The two share one handler because they are one action with two entry points, and the only
- * difference is which field holds the address.
- */
+/** The interest form, on an event with no date. Nothing else on the site posts to it. */
 export function wireInterest() {
-  const own = document.querySelector('[data-interest-form]');
-  const alt = document.querySelector('[data-interest-alt]');
+  const form = document.querySelector('[data-interest-form]');
+  if (!form) return;
+  const note = document.querySelector('[data-interest-note]');
+  const button = form.querySelector('button[type=submit]');
 
-  const send = async (id, form, button, note) => {
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
     const email = form.querySelector('input[type=email]').value.trim();
-    if (!email) {                       // the alt button bypasses the form's own validation
-      form.querySelector('input[type=email]').reportValidity();
-      return;
-    }
     button.disabled = true;
     const previous = button.innerHTML;
     button.textContent = 'One moment…';
-    const body = await requestInterest({ event: id, email,
+    const body = await requestInterest({ event: form.dataset.interestForm, email,
       subscribe: form.querySelector('[name=subscribe]')?.checked });
 
     setNote(note, body.ok, body.ok
@@ -302,19 +293,6 @@ export function wireInterest() {
       button.disabled = false;
       button.innerHTML = previous;
     }
-  };
-
-  own?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    send(own.dataset.interestForm, own, own.querySelector('button[type=submit]'),
-         document.querySelector('[data-interest-note]'));
-  });
-
-  // Inside the invitation form: same address, different action. It must not submit the form,
-  // which is why it is a plain button and not a second submit.
-  alt?.addEventListener('click', () => {
-    const form = alt.closest('form');
-    send(alt.dataset.interestAlt, form, alt, document.querySelector('[data-attend-note]'));
   });
 }
 
@@ -389,25 +367,21 @@ function primaryAction(ev) {
         <button type="submit" class="register">Send me the invitation
           <span class="arr" aria-hidden="true">→</span></button>
         <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
-          Invite me to future events too</label>
-        <button type="button" class="ask-no attend-alt" data-interest-alt="${e(ev.id)}">
-          Not sure yet — just tell the organiser I am interested</button>
+          Invite me to future events too${info(INVITATION)}</label>
       </form>
-      <p class="micro" data-attend-note>The organiser's own event, so the room and any later
-        change reach you automatically. Untick the box and your address is used for this
-        invitation only; leave it ticked and it joins the chapter's list, which you can leave
-        from any invitation.</p>`;
+      <p class="micro" data-attend-note></p>`;
   }
   return `
     <a class="register" href="${e(googleUrl(ev, { origin: location.origin }))}"
        target="_blank" rel="noopener">Add to Google Calendar
        <span class="arr" aria-hidden="true">→</span></a>
     <p class="micro">Or <a href="#" data-ics="${e(ev.id)}">download the .ics file</a> for Apple
-      Calendar, Outlook and everything else.</p>
-    ${interestForm(ev, 'This one has no registration page yet. Leave your address and the '
-      + 'organiser will come back to you — nothing goes in your calendar and no invitation is '
-      + 'sent.')}`;
+      Calendar, Outlook and everything else.</p>`;
 }
+
+const INVITATION = "The organiser's own event, so the room and any later change reach you "
+  + 'automatically. Untick the box and your address is used for this invitation only; leave '
+  + "it ticked and it joins the chapter's list, which you can leave from any invitation.";
 
 const emailField = () => `
   <input type="email" name="email" required autocomplete="email"
@@ -415,11 +389,17 @@ const emailField = () => `
          placeholder="your@email.com" aria-label="Your email address" />`;
 
 /**
- * Register interest — a note to the organiser, and nothing else.
+ * Register interest. Offered on ONE kind of event: the ones with no date.
  *
- * Deliberately NOT an invitation: no calendar entry, no email, no guest list. It is the only
- * thing that is still true of an event whose date has not been set, and it is the honest
- * answer for somebody who wants to be counted without a diary entry. See lib/interest.mjs.
+ * It was briefly offered on scheduled events too, as a second button under the invitation
+ * form. That was a choice nobody had asked for — the event has a date, the invitation is one
+ * press, and "or, alternatively, tell us quietly" is a worse version of the thing directly
+ * above it. On a dated event there is nothing to be unsure about that being invited does not
+ * already cover.
+ *
+ * Where it does belong there is no alternative at all: no date means no calendar event, so
+ * nothing can be joined and nothing can go in a diary. This is the only thing left that is
+ * true. See lib/interest.mjs.
  */
 const interestForm = (ev, note) => `
   <form class="attend wide interest" data-interest-form="${e(ev.id)}">
@@ -427,9 +407,9 @@ const interestForm = (ev, note) => `
     <button type="submit" class="register">Register interest
       <span class="arr" aria-hidden="true">→</span></button>
     <label class="attend-opt"><input type="checkbox" name="subscribe" checked />
-      Tell me about other events too</label>
+      Tell me about other events too${info(note)}</label>
   </form>
-  <p class="micro" data-interest-note>${e(note)}</p>`;
+  <p class="micro" data-interest-note></p>`;
 
 export function render({ ev, partial }) {
   const cta = primaryAction(ev);

@@ -387,7 +387,8 @@
   border-radius:var(--r-lg);box-shadow:var(--e1)}
 .subscribe div{flex:1;min-width:240px}
 .subscribe b{display:block;font-family:var(--font-display);font-size:17px;font-weight:600}
-.subscribe span{display:block;font-size:13.5px;color:var(--ink-3);margin-top:3px;max-width:52ch}
+.subscribe-say > span{display:block;font-size:13.5px;color:var(--ink-3);margin-top:3px;
+  max-width:52ch}
 .addcal-btn.primary{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .addcal-btn.primary:hover{background:var(--accent);color:var(--accent-ink)}
 .attend{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
@@ -556,8 +557,54 @@
   .me-pop{width:min(290px,calc(100vw - 32px))}
 }
 
-/* The quiet second action inside the invitation form: same address, different outcome. It has
-   to read as a real choice and plainly not the main one — a second filled button beside
-   "Send me the invitation" would make the two look interchangeable, which they are not. */
-.attend-alt{grid-column:1/-1;justify-self:start;text-align:left}
 .attend.interest .register{white-space:nowrap}
+
+/* ---- the "i" ---------------------------------------------------------- */
+/* Every form here used to carry a paragraph under it. All of them were true and none of them
+   were read. The words are the same; they are now one press away, attached to the control
+   they are about rather than sitting between the reader and the next thing on the page.
+
+   Shown by CSS on hover and on :focus-visible, so it works with no script at all and a
+   keyboard gets it for free. main.js adds `.open` for a tap. */
+/* `span.info-wrap` rather than `.info-wrap`: this is dropped inside labels and sentences all
+   over the site, several of which style their own spans as blocks. A bare class loses to
+   `.subscribe span`, and the icon drops onto a line of its own. */
+span.info-wrap{position:relative;display:inline-flex;vertical-align:middle;margin-left:4px}
+.info{display:grid;place-items:center;width:24px;height:24px;flex:none;
+  color:var(--ink-3);border-radius:50%;transition:color .15s ease,background .15s ease}
+.info svg{width:15px;height:15px}
+.info:hover{color:var(--accent);background:var(--accent-soft)}
+.info:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.info-wrap.open .info{color:var(--accent);background:var(--accent-soft)}
+
+.info-pop{position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);
+  z-index:90;width:max-content;max-width:min(280px,calc(100vw - 32px));
+  background:var(--ink);color:#fff;border-radius:var(--r-sm);padding:10px 12px;
+  font-size:12.5px;line-height:1.5;font-weight:400;text-align:left;letter-spacing:0;
+  text-transform:none;box-shadow:var(--e3);
+  opacity:0;visibility:hidden;transition:opacity .15s ease,visibility .15s}
+/* The stem. Purely decorative, and it must never widen the bubble. */
+.info-pop::after{content:'';position:absolute;top:100%;left:50%;margin-left:-5px;
+  border:5px solid transparent;border-top-color:var(--ink)}
+.info-wrap:hover .info-pop,
+.info:focus-visible ~ .info-pop,
+.info-wrap.open .info-pop{opacity:1;visibility:visible}
+
+/* On a phone the bubble would hang off the edge wherever the icon happens to sit, and no
+   amount of CSS can measure that. So it stops being a tooltip and becomes a sheet at the
+   foot of the screen — always fully on screen, always readable, and dismissed by a tap. */
+@media (max-width:560px){
+  .info-pop{position:fixed;inset:auto 12px 12px 12px;width:auto;max-width:none;
+    transform:none;padding:14px;font-size:13.5px;border-radius:var(--r)}
+  /* Clear of the event page's sticky action bar, which is the one thing a sheet at the foot
+     of the screen would otherwise sit under — and the bar is exactly where a reader's thumb
+     already is. */
+  .ev .info-pop{bottom:80px}
+  .info-pop::after{display:none}
+  .info-wrap:hover .info-pop{opacity:0;visibility:hidden}     /* a tap is not a hover */
+  .info-wrap.open .info-pop{opacity:1;visibility:visible}
+}
+
+/* The notes are now empty until a form has something to report, so they must not reserve
+   space when there is nothing in them. */
+.addcal-note:empty, .micro:empty, .subscribe-note:empty{display:none}

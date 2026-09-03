@@ -13,7 +13,7 @@
 import { useEventsApi } from '../api/useEventsApi.js';
 import * as EventCard from '../components/EventCard.js';
 import * as Timeline from '../components/Timeline.js';
-import { chip, action } from '../components/ui.js';
+import { chip, action, info } from '../components/ui.js';
 import { escape as e, monthYear, placeLabel, displayDate } from '../format.js';
 import { savedEmail, savedName, maybeAsk } from '../identity.js';
 import { requestSubscription } from '../api/attend.js';
@@ -195,9 +195,11 @@ export function render({ events, tbc, q, counts, facets }) {
   <div class="subscribe">
     <div class="subscribe-say">
       <b>Never miss an event</b>
-      <span>Give us your address and you will be invited to each new event as it is announced —
-        straight into your calendar, with the room and any later change. Leave whenever you
-        like; every invitation carries the way out.</span>
+      <span>Be invited to each new event.${info(
+        'As soon as one is announced, the invitation goes straight into your calendar, with '
+        + 'the room and any later change '
+        + 'the organiser makes. Leave whenever you like — every invitation carries the way '
+        + 'out, and you can also unsubscribe from the link in any of them.')}</span>
     </div>
     <form class="subscribe-form" data-subscribe>
       <input type="text" name="name" autocomplete="name" placeholder="Your name"

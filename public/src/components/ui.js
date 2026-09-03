@@ -8,6 +8,7 @@ const P = {
   video: 'M2 4.5A1.5 1.5 0 0 1 3.5 3h5A1.5 1.5 0 0 1 10 4.5v7A1.5 1.5 0 0 1 8.5 13h-5A1.5 1.5 0 0 1 2 11.5v-7Zm9 2.2 3-1.7v6l-3-1.7v-2.6Z',
   clock: 'M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm.6 3.2v3.5l2.6 1.6-.6 1L7.4 8.8V4.7h1.2Z',
   cal:   'M4 1.5v1.3H3A1.5 1.5 0 0 0 1.5 4.3v8.2A1.5 1.5 0 0 0 3 14h10a1.5 1.5 0 0 0 1.5-1.5V4.3A1.5 1.5 0 0 0 13 2.8h-1V1.5h-1.3v1.3H5.3V1.5H4Zm-1.2 4.6h10.4v6.4H2.8V6.1Z',
+  info:  'M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 1.3a5.2 5.2 0 1 1 0 10.4 5.2 5.2 0 0 1 0-10.4Zm-.7 3.9h1.4V11H7.3V6.7Zm.7-2.2a.85.85 0 1 1 0 1.7.85.85 0 0 1 0-1.7Z',
   users: 'M5.6 7.6a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6Zm5.2.4a1.9 1.9 0 1 0 0-3.8 1.9 1.9 0 0 0 0 3.8ZM1.4 13c0-2.2 1.9-3.5 4.2-3.5S9.8 10.8 9.8 13H1.4Zm9.8-2.9c1.8 0 3.4.9 3.4 2.9h-3.6c0-1.1-.4-2-1-2.7.4-.1.8-.2 1.2-.2Z',
 };
 export const icon = (name) =>
@@ -94,6 +95,33 @@ export const register = (href,
   <a class="register ${small ? 'sm' : ''} ${ghost ? 'ghost' : ''}" href="${e(href)}"
      ${internal ? '' : 'target="_blank" rel="noopener"'}>
     ${e(label)} <span class="arr" aria-hidden="true">→</span></a>`;
+
+/**
+ * The "i" — an explanation, folded away until somebody wants it.
+ * Vue: components/eo/InfoTip.vue
+ *
+ * Every form on this site used to carry a paragraph under it explaining what pressing the
+ * button would do. All of them were true and none of them were read: a member who has decided
+ * to come is looking at the field and the button, and three lines of grey type between them
+ * and the next thing on the page is noise they have to step over every time.
+ *
+ * So the paragraph goes behind the icon, attached to the exact control it is about. Hover or
+ * focus on a desktop, one tap on a phone. Nothing is lost — it is the same words, one press
+ * away, next to the thing they describe rather than below the whole form.
+ *
+ * The tooltip is a SIBLING and shown by CSS, not built by script: there is no inline handler
+ * to fall foul of the Content-Security-Policy, it works before any JavaScript has run, and a
+ * keyboard gets it from `:focus-visible` for free. main.js adds the tap.
+ */
+let tips = 0;
+export const info = (text, label = 'What this means') => {
+  const id = `tip${++tips}`;
+  return `<span class="info-wrap">
+    <button type="button" class="info" aria-label="${e(label)}" aria-expanded="false"
+            aria-describedby="${id}">${icon('info')}</button>
+    <span class="info-pop" id="${id}" role="tooltip">${e(text)}</span>
+  </span>`;
+};
 
 export const fact = (iconName, text) =>
   text ? `<span class="fact">${icon(iconName)}${e(text)}</span>` : '';

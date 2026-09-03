@@ -124,3 +124,25 @@ placeholder per event; the real sheet needs the column.
 Two more worth adding, in order of value: **`Year`** (removes every inference above), and
 **`Image`** (a cover per event — until then each card gets a deterministic gradient keyed by
 its own id, so an event always looks the same and a new one never looks broken).
+
+## 5. Explanations live behind the "i"
+
+Every form on the site had a paragraph under it saying what pressing the button would do. All
+of them were true. None of them were read: a member who has decided to come is looking at the
+field and the button, and three lines of grey type between them and the rest of the page is
+something to step over, every time, forever.
+
+So the paragraph moved into a tooltip on a small circled **i**, attached to the exact control
+it is about — the checkbox, the label above the buttons — rather than sitting under the whole
+form. Hover or keyboard focus on a desktop; one tap on a phone, where it opens as a sheet at
+the foot of the screen because no CSS can tell whether an anchored bubble would hang off the
+edge. Nothing was cut. It is the same words, one press away, next to the thing they describe.
+
+The note element stays where the paragraph was, but empty — it is where the form writes its
+answer afterwards, and an empty one takes up no space.
+
+**What did NOT go behind an "i".** An explanation folds away; an action never does. "Or
+download the .ics file", "Prefer to subscribe the calendar itself? Take the feed" and "Opens
+the EO registration page. Takes about a minute" all stay in the open — the first two are
+things to press, and the third is one short line of reassurance directly under the button it
+is about.
